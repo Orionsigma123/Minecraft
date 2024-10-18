@@ -8,51 +8,60 @@ document.body.appendChild(renderer.domElement);
 // Set the background color of the scene
 renderer.setClearColor(0x87CEEB, 1); // Sky blue color
 
-// Load the grass texture
-const textureLoader = new THREE.TextureLoader();
-const grassTexture = textureLoader.load('textures/grass.png');
-
-// World parameters
+// Generate a simple block world using Perlin noise
 const blockSize = 1;
-const chunkSize = 10; // 10 by 10 blocks per chunk
+const worldWidth = 50; // Increase for larger worlds
+const worldHeight = 50; // Increase for larger worlds
 const noiseScale = 0.1; // Adjust for terrain smoothness
 const simplex = new SimplexNoise();
 
-// To store generated chunks
-let chunks = {}; // Store rendered chunks
+// Inventory setup
+let inventory = [];
+const hotbarSize = 9; // Size of hotbar
+let selectedSlot = 0; // Current selected slot in the hotbar
 
 // Function to create a block
-function createBlock(x, y, z, texture) {
+function createBlock(x, y, z, color) {
     const geometry = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
-    const material = new THREE.MeshBasicMaterial({ map: texture });
+    const material = new THREE.MeshBasicMaterial({ color: color });
     const block = new THREE.Mesh(geometry, material);
     block.position.set(x * blockSize, y * blockSize, z * blockSize);
     return block;
 }
 
-// Function to generate a chunk
+// To store chunks
+let chunks = {};
+
+// Function to generate a chunk based on its coordinates
 function generateChunk(chunkX, chunkZ) {
-    const chunk = new THREE.Group(); // Create a group to contain blocks of this chunk
-    for (let x = 0; x < chunkSize; x++) {
-        for (let z = 0; z < chunkSize; z++) {
-            const worldX = chunkX * chunkSize + x;
-            const worldZ = chunkZ * chunkSize + z;
+    const chunk = new THREE.Group();
+    for (let x = 0; x < 10; x++) {
+        for (let z = 0; z < 10; z++) {
+            const worldX = chunkX * 10 + x;
+            const worldZ = chunkZ * 10 + z;
             const height = Math.floor(simplex.noise2D(worldX * noiseScale, worldZ * noiseScale) * 5); // Max height of 5 blocks
+            const blockType = height > 0 ? 0x00ff00 : 0x8B4513; // Green for grass, brown for dirt
             for (let y = 0; y <= height; y++) {
-                const block = createBlock(worldX, y, worldZ, grassTexture); // Create blocks using grass texture
+                const block = createBlock(worldX, y, worldZ, blockType); // Create the block
                 chunk.add(block); // Add the block to the chunk
+            }
+            // Add grass block at the top of the grass layer
+            if (height > 0) {
+                const grassBlock = createBlock(worldX, height, worldZ, 0x00ff00);
+                grassBlock.userData = { type: 'grass' }; // Mark this block as grass
+                chunk.add(grassBlock);
             }
         }
     }
-    return chunk; // Return the chunk group
+    return chunk;
 }
 
-// Function to update the rendered chunks based on render distance
+// Function to update rendered chunks based on render distance
 function updateChunks(renderDistance) {
     // Clear existing chunks
     for (const chunkKey in chunks) {
-        scene.remove(chunks[chunkKey]); // Remove from scene
-        delete chunks[chunkKey]; // Remove from storage
+        scene.remove(chunks[chunkKey]);
+        delete chunks[chunkKey];
     }
 
     const radius = Math.floor(renderDistance / 2); // Calculate the chunk radius
@@ -73,7 +82,7 @@ let renderDistance = 16; // Starting render distance
 updateChunks(renderDistance);
 
 // Position the camera to be just above the ground
-camera.position.set(100, 1.5, 100); // Adjust height and position to be just above the blocks
+camera.position.set(25, 1.5, 25); // Adjust height to be just above the blocks
 
 // Player controls
 const playerSpeed = 0.1;
@@ -81,10 +90,6 @@ const jumpForce = 0.2; // Jumping force
 let velocity = new THREE.Vector3(0, 0, 0);
 let isJumping = false;
 const keys = {};
-
-// Timer for holding the left-click
-let holdTimer = 0;
-let isHoldingBlock = false;
 
 window.addEventListener('keydown', (event) => {
     keys[event.code] = true;
@@ -120,6 +125,58 @@ document.addEventListener('mousemove', (event) => {
         camera.rotation.set(pitch, yaw, 0); // Keep Z-axis (roll) locked at 0
     }
 });
+
+// Function to handle breaking a block
+function breakBlock(worldX, worldY, worldZ) {
+    const blockToBreak = scene.children.find(child => {
+        return (
+            child instanceof THREE.Mesh &&
+            child.position.x === worldX * blockSize &&
+            child.position.y === worldY * blockSize &&
+            child.position.z === worldZ * blockSize
+        );
+    });
+
+    if (blockToBreak) {
+        const grassColor = 0x00ff00; // Grass color
+        if (blockToBreak.userData.type === 'grass') {
+            // Create a collectible item when breaking grass
+            const grassItem = createBlock(worldX, worldY, worldZ, grassColor);
+            grassItem.userData = { type: 'grass_item' }; // Mark this block as a collectible item
+            grassItem.position.y += 0.5; // Slightly above ground
+            scene.add(grassItem); // Add the grass item to the scene
+        }
+        scene.remove(blockToBreak); // Remove the broken block from the scene
+    }
+}
+
+// Function to collect items
+function collectItem(worldX, worldZ) {
+    const itemToCollect = scene.children.find(child => {
+        return (
+            child instanceof THREE.Mesh &&
+            child.userData.type === 'grass_item' &&
+            child.position.x === worldX * blockSize &&
+            child.position.z === worldZ * blockSize
+        );
+    });
+
+    if (itemToCollect) {
+        if (inventory.length < hotbarSize) {
+            inventory.push(itemToCollect.userData.type); // Add the item type to the inventory
+            scene.remove(itemToCollect); // Remove the item from the scene
+        }
+    }
+}
+
+// Function to place an item from the inventory
+function placeItem(worldX, worldY, worldZ) {
+    if (inventory[selectedSlot] === 'grass') { // Only allowing placement of grass for simplicity
+        const grassBlock = createBlock(worldX, worldY, worldZ, 0x00ff00);
+        scene.add(grassBlock); // Add the grass block to the scene
+        inventory[selectedSlot] = null; // Remove the item from the hotbar
+    }
+}
 
 // Handle movement
 function updatePlayer() {
@@ -167,44 +224,36 @@ function updatePlayer() {
     camera.position.x = Math.max(0, Math.min(camera.position.x, worldWidth - 1)); // Constrain camera within bounds
     camera.position.z = Math.max(0, Math.min(camera.position.z, worldHeight - 1));
 
+    // Check for item collection
+    const worldX = Math.floor(camera.position.x);
+    const worldZ = Math.floor(camera.position.z);
+    collectItem(worldX, worldZ); // Collect item if standing on it
+
     // Check collision with ground (simple method)
     const groundHeight = Math.floor(simplex.noise2D(camera.position.x * noiseScale, camera.position.z * noiseScale) * 5); // Check height at camera position
     if (camera.position.y < groundHeight + 1.5) {
         camera.position.y = groundHeight + 1.5; // Place the camera on top of the ground
     }
-}
 
-// Function to collect blocks
-function collectBlock() {
-    // Raycaster to detect which block is being looked at
-    const raycaster = new THREE.Raycaster();
-    const direction = new THREE.Vector3();
-    camera.getWorldDirection(direction); // Get the direction the camera is facing
-    raycaster.set(camera.position, direction); // Set the raycaster from the camera position in the direction of the camera
+    // Check for block breaking on left click
+    if (keys['Mouse0']) { // Left mouse button
+        breakBlock(worldX, Math.floor(camera.position.y), worldZ); // Break block under player
+    }
 
-    const intersects = raycaster.intersectObjects(scene.children); // Check for intersections with the blocks
-    if (intersects.length > 0) {
-        const block = intersects[0].object; // Get the first intersected object
-        if (!isHoldingBlock) {
-            isHoldingBlock = true; // Start holding the block
-            holdTimer = 0; // Reset hold timer
-            const holdInterval = setInterval(() => {
-                holdTimer += 0.1; // Increment hold timer by 0.1 seconds
-                if (holdTimer >= 2) { // If holding for 2 seconds
-                    if (inventory.length < maxInventorySize) { // Check if there's room in the inventory
-                        inventory.push(block); // Add block to inventory
-                        scene.remove(block); // Remove the block from the scene
-                        console.log("Collected a block! Inventory size: ", inventory.length); // Debugging output
-                    }
-                    clearInterval(holdInterval); // Stop the interval
-                    isHoldingBlock = false; // Reset holding status
-                }
-            }, 100); // Check every 100ms
-        }
-    } else {
-        isHoldingBlock = false; // Reset holding status if nothing is intersected
+    // Check for placing item on right click
+    if (keys['Mouse1']) { // Right mouse button
+        placeItem(worldX, Math.floor(camera.position.y), worldZ); // Place block under player
     }
 }
+
+// Handle window resize
+window.addEventListener('resize', () => {
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    renderer.setSize(width, height);
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+});
 
 // Update render distance based on slider input
 const renderDistanceInput = document.getElementById('renderDistance');
@@ -218,21 +267,12 @@ function updateRenderDistance() {
 
 renderDistanceInput.addEventListener('input', updateRenderDistance);
 
-// Handle window resize
-window.addEventListener('resize', () => {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    renderer.setSize(width, height);
-    camera.aspect = width / height;
-    camera.updateProjectionMatrix();
-});
-
 // Animation loop
 function animate() {
     requestAnimationFrame(animate);
     updatePlayer(); // Update player movement
-    collectBlock(); // Check for block collection
-    renderer.render(scene, camera); // Render the scene
+    renderer.render(scene, camera);
 }
 
-animate(); // Start the animation loop
+// Start animation
+animate();
