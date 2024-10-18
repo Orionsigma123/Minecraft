@@ -1,9 +1,12 @@
 // Setup basic scene, camera, and renderer
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer();
+const renderer = new THREE.WebGLRenderer({ alpha: true }); // Enable alpha for transparency
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
+
+// Set the background color of the scene
+renderer.setClearColor(0x87CEEB, 1); // Sky blue color
 
 // Generate a simple block world using Perlin noise
 const blockSize = 1;
@@ -54,7 +57,7 @@ function lockPointer() {
     document.body.requestPointerLock();
 }
 
-// Lock the pointer on click
+// Lock the pointer on mouse click
 document.body.addEventListener('click', lockPointer);
 
 // Mouse movement for looking around
@@ -71,10 +74,10 @@ document.addEventListener('mousemove', (event) => {
 function updatePlayer() {
     velocity.set(0, 0, 0); // Reset velocity
 
-    if (keys['KeyS']) { // Move forward (W)
-        velocity.z = playerSpeed; // Move forward
-    } else if (keys['KeyW']) { // Move backward (S)
+    if (keys['KeyS']) { // Move forward (S)
         velocity.z = -playerSpeed; // Move backward
+    } else if (keys['KeyW']) { // Move backward (W)
+        velocity.z = playerSpeed; // Move forward
     }
 
     if (keys['KeyA']) { // Move left
@@ -83,7 +86,7 @@ function updatePlayer() {
         velocity.x = playerSpeed;
     }
 
-    // Update camera position
+    // Update camera position based on the direction it's facing
     camera.position.x += velocity.x * Math.sin(camera.rotation.y);
     camera.position.z += velocity.z * Math.cos(camera.rotation.y);
 }
@@ -106,4 +109,3 @@ function animate() {
 
 // Start animation
 animate();
-
