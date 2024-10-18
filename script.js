@@ -8,51 +8,51 @@ document.body.appendChild(renderer.domElement);
 // Set the background color of the scene
 renderer.setClearColor(0x87CEEB, 1); // Sky blue color
 
-// Load the grass texture
-const textureLoader = new THREE.TextureLoader();
-const grassTexture = textureLoader.load('textures/grass.png');
+// Textures
+const grassTexture = new THREE.TextureLoader().load('path/to/grass_texture.png'); // Replace with your grass texture path
+const dirtTexture = new THREE.TextureLoader().load('path/to/dirt_texture.png'); // Replace with your dirt texture path
 
-// Inventory to store collected blocks
+// Inventory
 const inventory = [];
-const maxInventorySize = 10; // Max blocks in inventory
 
-// Generate a larger block world
-const blockSize = 1;
-const worldWidth = 200; // Increase for larger worlds
-const worldHeight = 200; // Increase for larger worlds
+// Generate a simple block world using Perlin noise
+let blockSize = 1;
+let renderDistance = 16; // Initial render distance
+const worldWidth = 64; // Increased world size
+const worldHeight = 64; // Increased world size
 const noiseScale = 0.1; // Adjust for terrain smoothness
 const simplex = new SimplexNoise();
 
 // Function to create a block
 function createBlock(x, y, z, texture) {
     const geometry = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
-    const material = new THREE.MeshBasicMaterial({ map: texture }); // Use the grass texture
+    const material = new THREE.MeshBasicMaterial({ map: texture }); // Use the specified texture
     const block = new THREE.Mesh(geometry, material);
     block.position.set(x * blockSize, y * blockSize, z * blockSize);
     scene.add(block);
 }
 
-// Function to replace air gaps with caves
+// Function to generate the world with cave systems and eliminate gaps
 function generateWorldWithCaves() {
-    for (let x = 0; x < worldWidth; x++) {
-        for (let z = 0; z < worldHeight; z++) {
-            const height = Math.floor(simplex.noise2D(x * noiseScale, z * noiseScale) * 5); // Max height of 5 blocks
+    for (let x = -renderDistance; x <= renderDistance; x++) {
+        for (let z = -renderDistance; z <= renderDistance; z++) {
+            const height = Math.floor(simplex.noise2D(x * noiseScale, z * noiseScale) * 5);
             for (let y = 0; y <= height; y++) {
-                createBlock(x, y, z, grassTexture); // Create blocks using grass texture
+                createBlock(x, y, z, grassTexture); // Use grass texture for blocks
             }
             // Create cave beneath the ground level
-            for (let y = -2; y <= -1; y++) {
-                createBlock(x, y, z, grassTexture); // Use the same grass texture for cave ceiling
+            for (let y = -1; y <= -1; y++) {
+                createBlock(x, y, z, dirtTexture); // Use dirt texture for cave ceiling
             }
         }
     }
 }
 
-// Generate the world with caves
+// Initial call to generate the world
 generateWorldWithCaves();
 
 // Position the camera to be just above the ground
-camera.position.set(100, 1.5, 100); // Adjust height and position to be just above the blocks
+camera.position.set(25, 1.5, 25); // Adjust height to be just above the blocks
 
 // Player controls
 const playerSpeed = 0.1;
@@ -60,10 +60,8 @@ const jumpForce = 0.2; // Jumping force
 let velocity = new THREE.Vector3(0, 0, 0);
 let isJumping = false;
 const keys = {};
-
-// Timer for holding the left-click
-let holdTimer = 0;
-let isHoldingBlock = false;
+let mousePressed = false;
+let selectedBlock = null;
 
 window.addEventListener('keydown', (event) => {
     keys[event.code] = true;
@@ -71,6 +69,40 @@ window.addEventListener('keydown', (event) => {
 window.addEventListener('keyup', (event) => {
     keys[event.code] = false;
 });
+
+// Handle left mouse button down event
+window.addEventListener('mousedown', (event) => {
+    if (event.button === 0) { // Left mouse button
+        mousePressed = true;
+        selectedBlock = getBlockUnderCursor(); // Get the block under the cursor
+    }
+});
+
+// Handle left mouse button up event
+window.addEventListener('mouseup', (event) => {
+    if (event.button === 0) { // Left mouse button
+        mousePressed = false;
+        if (selectedBlock) {
+            // Add block to inventory and remove from scene
+            inventory.push(selectedBlock.material.map); // Store the texture or block type
+            scene.remove(selectedBlock); // Remove the block from the scene
+            selectedBlock = null; // Reset selected block
+        }
+    }
+});
+
+// Function to get the block under the cursor
+function getBlockUnderCursor() {
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(scene.children);
+
+    return intersects.length > 0 ? intersects[0].object : null; // Return the block if intersected
+}
 
 // Function to lock the mouse pointer
 function lockPointer() {
@@ -153,44 +185,6 @@ function updatePlayer() {
     }
 }
 
-// Function to collect blocks
-function collectBlock() {
-    // Raycaster to detect which block is being looked at
-    const raycaster = new THREE.Raycaster();
-    const direction = new THREE.Vector3();
-    camera.getWorldDirection(direction); // Get the direction the camera is facing
-    raycaster.set(camera.position, direction); // Set the raycaster from the camera position in the direction of the camera
-
-    const intersects = raycaster.intersectObjects(scene.children); // Check for intersections with the blocks
-    if (intersects.length > 0) {
-        const block = intersects[0].object; // Get the first intersected object
-        if (!isHoldingBlock) {
-            isHoldingBlock = true; // Start holding the block
-            holdTimer = 0; // Reset hold timer
-            const holdInterval = setInterval(() => {
-                holdTimer += 0.1; // Increment hold timer by 0.1 seconds
-                if (holdTimer >= 2) { // If holding for 2 seconds
-                    if (inventory.length < maxInventorySize) { // Check if there's room in the inventory
-                        inventory.push(block); // Add block to inventory
-                        scene.remove(block); // Remove the block from the scene
-                        console.log("Collected a block! Inventory size: ", inventory.length); // Debugging output
-                    }
-                    clearInterval(holdInterval); // Stop the interval
-                    isHoldingBlock = false; // Reset holding status
-                }
-            }, 100); // Run every 100 ms
-        }
-    } else {
-        isHoldingBlock = false; // Reset if not holding a block
-    }
-}
-
-// Listen for mouse down to start collecting blocks
-document.addEventListener('mousedown', collectBlock);
-document.addEventListener('mouseup', () => {
-    isHoldingBlock = false; // Reset holding status on mouse up
-});
-
 // Handle window resize
 window.addEventListener('resize', () => {
     const width = window.innerWidth;
@@ -200,12 +194,31 @@ window.addEventListener('resize', () => {
     camera.updateProjectionMatrix();
 });
 
+// Render distance slider event
+const renderDistanceInput = document.getElementById('renderDistance');
+const renderDistanceValue = document.getElementById('renderDistanceValue');
+
+renderDistanceInput.addEventListener('input', (event) => {
+    renderDistance = parseInt(event.target.value);
+    renderDistanceValue.textContent = renderDistance; // Update the displayed value
+    regenerateWorld(); // Regenerate the world based on new render distance
+});
+
+// Function to regenerate the world based on the render distance
+function regenerateWorld() {
+    // Clear existing blocks
+    while (scene.children.length) {
+        scene.remove(scene.children[0]); // Clear all objects in the scene
+    }
+    generateWorldWithCaves(); // Regenerate the world with the updated render distance
+}
+
 // Animation loop
 function animate() {
     requestAnimationFrame(animate);
     updatePlayer(); // Update player movement
-    renderer.render(scene, camera); // Render the scene
+    renderer.render(scene, camera);
 }
 
-// Start the animation loop
+// Start animation
 animate();
