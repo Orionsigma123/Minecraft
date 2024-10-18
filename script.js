@@ -1,12 +1,22 @@
 // Setup basic scene, camera, and renderer
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer({ alpha: true }); // Enable alpha for transparency
+const renderer = new THREE.WebGLRenderer({ alpha: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
-
-// Set the background color of the scene
 renderer.setClearColor(0x87CEEB, 1); // Sky blue color
+
+// Setup audio
+const audio = new Audio('https://raw.githubusercontent.com/your-username/Minecraft/main/audio/C418%20-%20Haggstrom%20-%20Minecraft%20Volume%20Alpha.mp3'); // Replace 'your-username' with your actual GitHub username
+audio.loop = true; // Loop the audio
+audio.volume = 0.5; // Set volume (0.0 to 1.0)
+
+// Play audio on load
+window.addEventListener('load', () => {
+    audio.play().catch((error) => {
+        console.log("Audio play failed: ", error); // Handle play failure
+    });
+});
 
 // Textures
 const grassTexture = new THREE.TextureLoader().load('path/to/grass_texture.png'); // Replace with your grass texture path
