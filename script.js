@@ -19,8 +19,8 @@ window.addEventListener('load', () => {
 });
 
 // Textures
-const grassTexture = new THREE.TextureLoader().load('path/to/grass_texture.png'); // Replace with your grass texture path
-const dirtTexture = new THREE.TextureLoader().load('path/to/dirt_texture.png'); // Replace with your dirt texture path
+const grassTexture = new THREE.TextureLoader().load('textures/grass.png'); // Replace with your grass texture path
+
 
 // Inventory
 const inventory = [];
