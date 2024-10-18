@@ -11,7 +11,7 @@ renderer.setClearColor(0x87CEEB, 1); // Sky blue color
 // Load textures
 const textureLoader = new THREE.TextureLoader();
 const grassTexture = textureLoader.load('textures/grass.png'); // Replace with your grass texture path
-const dirtTexture = textureLoader.load('textures/dirt.png'); // Replace with your dirt texture path
+const dirtTexture = textureLoader.load('textures/My-img8bit-com-Effect.jpg'); // Replace with your dirt texture path
 
 // Generate a simple block world using Perlin noise
 const blockSize = 1;
