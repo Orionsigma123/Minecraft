@@ -8,41 +8,39 @@ document.body.appendChild(renderer.domElement);
 // Set the background color of the scene
 renderer.setClearColor(0x87CEEB, 1); // Sky blue color
 
-// Load textures
+// Load the grass texture
 const textureLoader = new THREE.TextureLoader();
-const grassTexture = textureLoader.load('textures/grass.png'); // Replace with your grass texture path
-const dirtTexture = textureLoader.load('textures/My-img8bit-com-Effect.jpg'); // Replace with your dirt texture path
+const grassTexture = textureLoader.load('textures/grass.png');
 
-// Generate a simple block world using Perlin noise
+// Generate a larger block world
 const blockSize = 1;
-const worldWidth = 50; // Increase for larger worlds
-const worldHeight = 50; // Increase for larger worlds
+const worldWidth = 200; // Increase for larger worlds
+const worldHeight = 200; // Increase for larger worlds
 const noiseScale = 0.1; // Adjust for terrain smoothness
 const simplex = new SimplexNoise();
 
 // Function to create a block
 function createBlock(x, y, z, texture) {
     const geometry = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
-    const material = new THREE.MeshBasicMaterial({ map: texture }); // Use texture
+    const material = new THREE.MeshBasicMaterial({ map: texture }); // Use the grass texture
     const block = new THREE.Mesh(geometry, material);
     block.position.set(x * blockSize, y * blockSize, z * blockSize);
     scene.add(block);
 }
 
-// Generate the world using Perlin noise and ensure no holes
+// Generate the world using Perlin noise and set every block to grass
 for (let x = 0; x < worldWidth; x++) {
     for (let z = 0; z < worldHeight; z++) {
         // Get height based on noise value
         const height = Math.floor(simplex.noise2D(x * noiseScale, z * noiseScale) * 5); // Max height of 5 blocks
-        const blockType = height > 0 ? grassTexture : dirtTexture; // Use textures for grass and dirt
         for (let y = 0; y <= height; y++) {
-            createBlock(x, y, z, blockType);
+            createBlock(x, y, z, grassTexture); // Create blocks using grass texture
         }
     }
 }
 
 // Position the camera to be just above the ground
-camera.position.set(25, 1.5, 25); // Adjust height to be just above the blocks
+camera.position.set(100, 1.5, 100); // Adjust height and position to be just above the blocks
 
 // Player controls
 const playerSpeed = 0.1;
@@ -138,6 +136,24 @@ function updatePlayer() {
         camera.position.y = groundHeight + 1.5; // Place the camera on top of the ground
     }
 }
+
+// Function to break blocks
+function breakBlock() {
+    // Raycaster to detect which block is being looked at
+    const raycaster = new THREE.Raycaster();
+    const direction = new THREE.Vector3();
+    camera.getWorldDirection(direction); // Get the direction the camera is facing
+    raycaster.set(camera.position, direction); // Set the raycaster from the camera position in the direction of the camera
+
+    const intersects = raycaster.intersectObjects(scene.children); // Check for intersections with the blocks
+    if (intersects.length > 0) {
+        const block = intersects[0].object; // Get the first intersected object
+        scene.remove(block); // Remove the block from the scene
+    }
+}
+
+// Listen for mouse clicks to break blocks
+document.addEventListener('mousedown', breakBlock);
 
 // Handle window resize
 window.addEventListener('resize', () => {
