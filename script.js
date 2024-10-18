@@ -1,26 +1,15 @@
 // Setup basic scene, camera, and renderer
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer({ alpha: true });
+const renderer = new THREE.WebGLRenderer({ alpha: true }); // Enable alpha for transparency
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
+
+// Set the background color of the scene
 renderer.setClearColor(0x87CEEB, 1); // Sky blue color
 
-// Setup audio
-const audio = new Audio('https://raw.githubusercontent.com/your-username/Minecraft/main/audio/C418%20-%20Haggstrom%20-%20Minecraft%20Volume%20Alpha.mp3'); // Replace 'your-username' with your actual GitHub username
-audio.loop = true; // Loop the audio
-audio.volume = 0.5; // Set volume (0.0 to 1.0)
-
-// Play audio on load
-window.addEventListener('load', () => {
-    audio.play().catch((error) => {
-        console.log("Audio play failed: ", error); // Handle play failure
-    });
-});
-
 // Textures
-const grassTexture = new THREE.TextureLoader().load('textures/grass.png'); // Replace with your grass texture path
-
+const grassTexture = new THREE.TextureLoader().load('textures/grass.png'); // Replace with your grass texture path 
 
 // Inventory
 const inventory = [];
@@ -42,24 +31,20 @@ function createBlock(x, y, z, texture) {
     scene.add(block);
 }
 
-// Function to generate the world with cave systems and eliminate gaps
-function generateWorldWithCaves() {
+// Function to generate the world
+function generateWorld() {
     for (let x = -renderDistance; x <= renderDistance; x++) {
         for (let z = -renderDistance; z <= renderDistance; z++) {
             const height = Math.floor(simplex.noise2D(x * noiseScale, z * noiseScale) * 5);
             for (let y = 0; y <= height; y++) {
                 createBlock(x, y, z, grassTexture); // Use grass texture for blocks
             }
-            // Create cave beneath the ground level
-            for (let y = -1; y <= -1; y++) {
-                createBlock(x, y, z, dirtTexture); // Use dirt texture for cave ceiling
-            }
         }
     }
 }
 
 // Initial call to generate the world
-generateWorldWithCaves();
+generateWorld();
 
 // Position the camera to be just above the ground
 camera.position.set(25, 1.5, 25); // Adjust height to be just above the blocks
@@ -220,7 +205,7 @@ function regenerateWorld() {
     while (scene.children.length) {
         scene.remove(scene.children[0]); // Clear all objects in the scene
     }
-    generateWorldWithCaves(); // Regenerate the world with the updated render distance
+    generateWorld(); // Regenerate the world with the updated render distance
 }
 
 // Animation loop
