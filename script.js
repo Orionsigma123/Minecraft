@@ -1,50 +1,69 @@
 // Setup basic scene, camera, and renderer
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer({ alpha: true }); // Enable alpha for transparency
+const renderer = new THREE.WebGLRenderer({ alpha: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
-
-// Set the background color of the scene
 renderer.setClearColor(0x87CEEB, 1); // Sky blue color
 
 // Textures
-const grassTexture = new THREE.TextureLoader().load('textures/grass.png'); // Replace with your grass texture path 
+const grassTexture = new THREE.TextureLoader().load('textures/grass.png'); // Replace with your grass texture path
 
 // Inventory
 const inventory = [];
 
-// Generate a simple block world using Perlin noise
-let blockSize = 1;
-let renderDistance = 16; // Initial render distance
-const worldWidth = 64; // Increased world size
-const worldHeight = 64; // Increased world size
+// Define chunk size
+const chunkSize = 10; // Each chunk is 10x10 blocks
+let renderDistance = 16; // Initial render distance (in chunks)
 const noiseScale = 0.1; // Adjust for terrain smoothness
 const simplex = new SimplexNoise();
 
 // Function to create a block
 function createBlock(x, y, z, texture) {
-    const geometry = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
-    const material = new THREE.MeshBasicMaterial({ map: texture }); // Use the specified texture
+    const geometry = new THREE.BoxGeometry(1, 1, 1); // Each block is 1x1
+    const material = new THREE.MeshBasicMaterial({ map: texture });
     const block = new THREE.Mesh(geometry, material);
-    block.position.set(x * blockSize, y * blockSize, z * blockSize);
+    block.position.set(x, y, z);
     scene.add(block);
 }
 
-// Function to generate the world
-function generateWorld() {
-    for (let x = -renderDistance; x <= renderDistance; x++) {
-        for (let z = -renderDistance; z <= renderDistance; z++) {
-            const height = Math.floor(simplex.noise2D(x * noiseScale, z * noiseScale) * 5);
+// Function to generate a single chunk
+function generateChunk(chunkX, chunkZ) {
+    for (let x = 0; x < chunkSize; x++) {
+        for (let z = 0; z < chunkSize; z++) {
+            const worldX = chunkX * chunkSize + x; // Calculate world position
+            const worldZ = chunkZ * chunkSize + z;
+            const height = Math.floor(simplex.noise2D(worldX * noiseScale, worldZ * noiseScale) * 5);
             for (let y = 0; y <= height; y++) {
-                createBlock(x, y, z, grassTexture); // Use grass texture for blocks
+                createBlock(worldX, y, worldZ, grassTexture); // Use grass texture for blocks
+            }
+            // Create cave beneath the ground level (you can adjust this logic if needed)
+            for (let y = -1; y <= -1; y++) {
+                createBlock(worldX, y, worldZ, grassTexture); // Use grass texture for cave ceiling (if applicable)
             }
         }
     }
 }
 
+// Function to regenerate the world based on the render distance
+function regenerateWorld() {
+    while (scene.children.length) {
+        scene.remove(scene.children[0]); // Clear all objects in the scene
+    }
+    
+    const visibleChunks = Math.floor(renderDistance); // Calculate the number of chunks to display
+    const startX = Math.floor(camera.position.x / chunkSize) - Math.floor(visibleChunks / 2);
+    const startZ = Math.floor(camera.position.z / chunkSize) - Math.floor(visibleChunks / 2);
+
+    for (let chunkX = startX; chunkX < startX + visibleChunks; chunkX++) {
+        for (let chunkZ = startZ; chunkZ < startZ + visibleChunks; chunkZ++) {
+            generateChunk(chunkX, chunkZ); // Generate visible chunks
+        }
+    }
+}
+
 // Initial call to generate the world
-generateWorld();
+regenerateWorld();
 
 // Position the camera to be just above the ground
 camera.position.set(25, 1.5, 25); // Adjust height to be just above the blocks
@@ -112,16 +131,15 @@ let pitch = 0; // Up and down rotation (X-axis)
 let yaw = 0; // Left and right rotation (Y-axis)
 const lookSensitivity = 0.1; // Sensitivity for vertical look
 
-// Adjust the camera rotation logic to lock the Z-axis (roll)
 document.addEventListener('mousemove', (event) => {
     if (document.pointerLockElement) {
         yaw -= event.movementX * lookSensitivity; // Left/right
         pitch -= event.movementY * lookSensitivity; // Up/down
 
-        // Clamp pitch to prevent flipping (X-axis rotation between -90° and 90°)
+        // Clamp pitch to prevent flipping
         pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
 
-        // Apply camera rotation using Euler angles (yaw for left/right, pitch for up/down)
+        // Apply camera rotation using Euler angles
         camera.rotation.order = "YXZ"; // Yaw (Y) first, then pitch (X)
         camera.rotation.set(pitch, yaw, 0); // Keep Z-axis (roll) locked at 0
     }
@@ -131,9 +149,9 @@ document.addEventListener('mousemove', (event) => {
 function updatePlayer() {
     velocity.set(0, 0, 0); // Reset velocity
 
-    if (keys['KeyS']) { // Move backward (S)
+    if (keys['KeyS']) { // Move backward
         velocity.z = playerSpeed; // Move forward
-    } else if (keys['KeyW']) { // Move forward (W)
+    } else if (keys['KeyW']) { // Move forward
         velocity.z = -playerSpeed; // Move backward
     }
 
@@ -170,11 +188,11 @@ function updatePlayer() {
     camera.position.y += velocity.y; // Update vertical position
 
     // Collision detection to prevent phasing through blocks
-    camera.position.x = Math.max(0, Math.min(camera.position.x, worldWidth - 1)); // Constrain camera within bounds
-    camera.position.z = Math.max(0, Math.min(camera.position.z, worldHeight - 1));
+    camera.position.x = Math.max(0, Math.min(camera.position.x, chunkSize * renderDistance - 1)); // Constrain camera within bounds
+    camera.position.z = Math.max(0, Math.min(camera.position.z, chunkSize * renderDistance - 1));
 
     // Check collision with ground (simple method)
-    const groundHeight = Math.floor(simplex.noise2D(camera.position.x * noiseScale, camera.position.z * noiseScale) * 5); // Check height at camera position
+    const groundHeight = Math.floor(simplex.noise2D(camera.position.x * noiseScale, camera.position.z * noiseScale) * 5);
     if (camera.position.y < groundHeight + 1.5) {
         camera.position.y = groundHeight + 1.5; // Place the camera on top of the ground
     }
@@ -194,26 +212,17 @@ const renderDistanceInput = document.getElementById('renderDistance');
 const renderDistanceValue = document.getElementById('renderDistanceValue');
 
 renderDistanceInput.addEventListener('input', (event) => {
-    renderDistance = parseInt(event.target.value);
-    renderDistanceValue.textContent = renderDistance; // Update the displayed value
-    regenerateWorld(); // Regenerate the world based on new render distance
+    renderDistance = event.target.value; // Update render distance based on slider
+    renderDistanceValue.innerText = `Render Distance: ${renderDistance}`;
+    regenerateWorld(); // Regenerate world with new render distance
 });
-
-// Function to regenerate the world based on the render distance
-function regenerateWorld() {
-    // Clear existing blocks
-    while (scene.children.length) {
-        scene.remove(scene.children[0]); // Clear all objects in the scene
-    }
-    generateWorld(); // Regenerate the world with the updated render distance
-}
 
 // Animation loop
 function animate() {
     requestAnimationFrame(animate);
     updatePlayer(); // Update player movement
+    regenerateWorld(); // Regenerate world as needed
     renderer.render(scene, camera);
 }
 
-// Start animation
-animate();
+animate(); // Start the animation loop
