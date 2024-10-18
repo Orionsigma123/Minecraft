@@ -36,12 +36,12 @@ for (let x = 0; x < worldWidth; x++) {
     }
 }
 
-// Position the camera
-camera.position.set(25, 10, 25); // Center the camera on the generated world
-camera.lookAt(25, 0, 25);
+// Position the camera to be just above the ground
+camera.position.set(25, 1.5, 25); // Adjust height to be just above the blocks
 
 // Player controls
 const playerSpeed = 0.1;
+const lookSpeed = 0.1; // Speed of looking around
 let velocity = new THREE.Vector3(0, 0, 0);
 const keys = {};
 
@@ -61,12 +61,20 @@ function lockPointer() {
 document.body.addEventListener('click', lockPointer);
 
 // Mouse movement for looking around
-let yaw = 0;
+let pitch = 0; // Up and down rotation
+let yaw = 0; // Left and right rotation
 
 document.addEventListener('mousemove', (event) => {
     if (document.pointerLockElement) {
-        yaw -= event.movementX * 0.1; // Look left/right
-        camera.rotation.y = THREE.MathUtils.degToRad(yaw); // Rotate the camera
+        yaw -= event.movementX * lookSpeed; // Look left/right
+        pitch -= event.movementY * lookSpeed; // Look up/down
+
+        // Clamp pitch to prevent flipping
+        pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
+
+        // Apply camera rotation
+        camera.rotation.x = pitch; // Up/down rotation
+        camera.rotation.y = THREE.MathUtils.degToRad(yaw); // Left/right rotation
     }
 });
 
@@ -74,10 +82,10 @@ document.addEventListener('mousemove', (event) => {
 function updatePlayer() {
     velocity.set(0, 0, 0); // Reset velocity
 
-    if (keys['KeyS']) { // Move forward (S)
-        velocity.z = -playerSpeed; // Move backward
-    } else if (keys['KeyW']) { // Move backward (W)
+    if (keys['KeyS']) { // Move backward (S)
         velocity.z = playerSpeed; // Move forward
+    } else if (keys['KeyW']) { // Move forward (W)
+        velocity.z = -playerSpeed; // Move backward
     }
 
     if (keys['KeyA']) { // Move left
@@ -89,6 +97,9 @@ function updatePlayer() {
     // Update camera position based on the direction it's facing
     camera.position.x += velocity.x * Math.sin(camera.rotation.y);
     camera.position.z += velocity.z * Math.cos(camera.rotation.y);
+
+    // Ensure the camera stays above ground level
+    camera.position.y = 1.5; // Maintain a height above the ground
 }
 
 // Handle window resize
