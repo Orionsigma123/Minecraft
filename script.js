@@ -49,6 +49,14 @@ window.addEventListener('keyup', (event) => {
     keys[event.code] = false;
 });
 
+// Function to lock the mouse pointer
+function lockPointer() {
+    document.body.requestPointerLock();
+}
+
+// Lock the pointer on click
+document.body.addEventListener('click', lockPointer);
+
 // Mouse movement for looking around
 let yaw = 0;
 
@@ -64,9 +72,9 @@ function updatePlayer() {
     velocity.set(0, 0, 0); // Reset velocity
 
     if (keys['KeyS']) { // Move forward (W)
-        velocity.z = -playerSpeed; // Move backward
-    } else if (keys['KeyW']) { // Move backward (S)
         velocity.z = playerSpeed; // Move forward
+    } else if (keys['KeyW']) { // Move backward (S)
+        velocity.z = -playerSpeed; // Move backward
     }
 
     if (keys['KeyA']) { // Move left
@@ -98,3 +106,4 @@ function animate() {
 
 // Start animation
 animate();
+
