@@ -16,40 +16,61 @@ const grassTexture = textureLoader.load('textures/grass.png');
 const inventory = [];
 const maxInventorySize = 10; // Max blocks in inventory
 
-// Generate a larger block world
+// World parameters
 const blockSize = 1;
-const worldWidth = 200; // Increase for larger worlds
-const worldHeight = 200; // Increase for larger worlds
+const chunkSize = 10; // 10 by 10 blocks per chunk
+const maxChunks = 32; // Adjust based on maximum render distance
 const noiseScale = 0.1; // Adjust for terrain smoothness
 const simplex = new SimplexNoise();
+
+// To store generated chunks
+const chunks = {};
 
 // Function to create a block
 function createBlock(x, y, z, texture) {
     const geometry = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
-    const material = new THREE.MeshBasicMaterial({ map: texture }); // Use the grass texture
+    const material = new THREE.MeshBasicMaterial({ map: texture });
     const block = new THREE.Mesh(geometry, material);
     block.position.set(x * blockSize, y * blockSize, z * blockSize);
     scene.add(block);
 }
 
-// Function to replace air gaps with caves
-function generateWorldWithCaves() {
-    for (let x = 0; x < worldWidth; x++) {
-        for (let z = 0; z < worldHeight; z++) {
-            const height = Math.floor(simplex.noise2D(x * noiseScale, z * noiseScale) * 5); // Max height of 5 blocks
+// Function to generate a chunk
+function generateChunk(chunkX, chunkZ) {
+    for (let x = 0; x < chunkSize; x++) {
+        for (let z = 0; z < chunkSize; z++) {
+            const worldX = chunkX * chunkSize + x;
+            const worldZ = chunkZ * chunkSize + z;
+            const height = Math.floor(simplex.noise2D(worldX * noiseScale, worldZ * noiseScale) * 5); // Max height of 5 blocks
             for (let y = 0; y <= height; y++) {
-                createBlock(x, y, z, grassTexture); // Create blocks using grass texture
-            }
-            // Create cave beneath the ground level
-            for (let y = -2; y <= -1; y++) {
-                createBlock(x, y, z, grassTexture); // Use the same grass texture for cave ceiling
+                createBlock(worldX, y, worldZ, grassTexture); // Create blocks using grass texture
             }
         }
     }
 }
 
-// Generate the world with caves
-generateWorldWithCaves();
+// Function to update the rendered chunks based on render distance
+function updateChunks(renderDistance) {
+    // Clear existing chunks
+    for (const chunkKey in chunks) {
+        scene.remove(chunks[chunkKey]);
+    }
+    chunks = {}; // Reset chunks storage
+
+    const radius = Math.floor(renderDistance / 2); // Calculate the chunk radius
+    for (let x = -radius; x <= radius; x++) {
+        for (let z = -radius; z <= radius; z++) {
+            const chunkKey = `${x}_${z}`;
+            if (!chunks[chunkKey]) {
+                chunks[chunkKey] = generateChunk(x, z); // Generate new chunk
+            }
+        }
+    }
+}
+
+// Initial render distance and world generation
+let renderDistance = 16; // Starting render distance
+updateChunks(renderDistance);
 
 // Position the camera to be just above the ground
 camera.position.set(100, 1.5, 100); // Adjust height and position to be just above the blocks
@@ -176,36 +197,33 @@ function collectBlock() {
                         console.log("Collected a block! Inventory size: ", inventory.length); // Debugging output
                     }
                     clearInterval(holdInterval); // Stop the interval
-                    isHoldingBlock = false; // Reset holding status
+                    isHoldingBlock = false; // Reset holding state
                 }
-            }, 100); // Run every 100 ms
+            }, 100); // Check every 100ms
         }
     } else {
-        isHoldingBlock = false; // Reset if not holding a block
+        isHoldingBlock = false; // Reset holding state if nothing is intersected
     }
 }
 
-// Listen for mouse down to start collecting blocks
-document.addEventListener('mousedown', collectBlock);
-document.addEventListener('mouseup', () => {
-    isHoldingBlock = false; // Reset holding status on mouse up
-});
+// Update render distance based on slider input
+const renderDistanceInput = document.getElementById('renderDistance');
+const renderDistanceValueDisplay = document.getElementById('renderDistanceValue');
 
-// Handle window resize
-window.addEventListener('resize', () => {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    renderer.setSize(width, height);
-    camera.aspect = width / height;
-    camera.updateProjectionMatrix();
-});
+function updateRenderDistance() {
+    renderDistance = parseInt(renderDistanceInput.value);
+    renderDistanceValueDisplay.textContent = renderDistance; // Update the display value
+    updateChunks(renderDistance); // Update the rendered chunks
+}
+
+renderDistanceInput.addEventListener('input', updateRenderDistance);
 
 // Animation loop
 function animate() {
     requestAnimationFrame(animate);
     updatePlayer(); // Update player movement
+    collectBlock(); // Check for block collection
     renderer.render(scene, camera); // Render the scene
 }
 
-// Start the animation loop
-animate();
+animate(); // Start the animation loop
