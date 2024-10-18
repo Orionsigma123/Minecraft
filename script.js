@@ -15,7 +15,6 @@ const grassTexture = textureLoader.load('textures/grass.png');
 // World parameters
 const blockSize = 1;
 const chunkSize = 10; // 10 by 10 blocks per chunk
-const maxChunks = 32; // Adjust based on maximum render distance
 const noiseScale = 0.1; // Adjust for terrain smoothness
 const simplex = new SimplexNoise();
 
@@ -194,15 +193,16 @@ function collectBlock() {
                 if (holdTimer >= 2) { // If holding for 2 seconds
                     if (inventory.length < maxInventorySize) { // Check if there's room in the inventory
                         inventory.push(block); // Add block to inventory
-                        scene.remove(block); // Remove block from scene
-                        clearInterval(holdInterval); // Stop the interval
-                        isHoldingBlock = false; // Reset holding state
+                        scene.remove(block); // Remove the block from the scene
+                        console.log("Collected a block! Inventory size: ", inventory.length); // Debugging output
                     }
+                    clearInterval(holdInterval); // Stop the interval
+                    isHoldingBlock = false; // Reset holding status
                 }
             }, 100); // Check every 100ms
         }
     } else {
-        isHoldingBlock = false; // Reset holding state if nothing is intersected
+        isHoldingBlock = false; // Reset holding status if nothing is intersected
     }
 }
 
@@ -217,6 +217,15 @@ function updateRenderDistance() {
 }
 
 renderDistanceInput.addEventListener('input', updateRenderDistance);
+
+// Handle window resize
+window.addEventListener('resize', () => {
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    renderer.setSize(width, height);
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+});
 
 // Animation loop
 function animate() {
