@@ -12,6 +12,10 @@ renderer.setClearColor(0x87CEEB, 1); // Sky blue color
 const textureLoader = new THREE.TextureLoader();
 const grassTexture = textureLoader.load('textures/grass.png');
 
+// Inventory to store collected blocks
+const inventory = [];
+const maxInventorySize = 10; // Max blocks in inventory
+
 // Generate a larger block world
 const blockSize = 1;
 const worldWidth = 200; // Increase for larger worlds
@@ -28,16 +32,24 @@ function createBlock(x, y, z, texture) {
     scene.add(block);
 }
 
-// Generate the world using Perlin noise and set every block to grass
-for (let x = 0; x < worldWidth; x++) {
-    for (let z = 0; z < worldHeight; z++) {
-        // Get height based on noise value
-        const height = Math.floor(simplex.noise2D(x * noiseScale, z * noiseScale) * 5); // Max height of 5 blocks
-        for (let y = 0; y <= height; y++) {
-            createBlock(x, y, z, grassTexture); // Create blocks using grass texture
+// Function to replace air gaps with caves
+function generateWorldWithCaves() {
+    for (let x = 0; x < worldWidth; x++) {
+        for (let z = 0; z < worldHeight; z++) {
+            const height = Math.floor(simplex.noise2D(x * noiseScale, z * noiseScale) * 5); // Max height of 5 blocks
+            for (let y = 0; y <= height; y++) {
+                createBlock(x, y, z, grassTexture); // Create blocks using grass texture
+            }
+            // Create cave beneath the ground level
+            for (let y = -2; y <= -1; y++) {
+                createBlock(x, y, z, grassTexture); // Use the same grass texture for cave ceiling
+            }
         }
     }
 }
+
+// Generate the world with caves
+generateWorldWithCaves();
 
 // Position the camera to be just above the ground
 camera.position.set(100, 1.5, 100); // Adjust height and position to be just above the blocks
@@ -48,6 +60,10 @@ const jumpForce = 0.2; // Jumping force
 let velocity = new THREE.Vector3(0, 0, 0);
 let isJumping = false;
 const keys = {};
+
+// Timer for holding the left-click
+let holdTimer = 0;
+let isHoldingBlock = false;
 
 window.addEventListener('keydown', (event) => {
     keys[event.code] = true;
@@ -137,8 +153,8 @@ function updatePlayer() {
     }
 }
 
-// Function to break blocks
-function breakBlock() {
+// Function to collect blocks
+function collectBlock() {
     // Raycaster to detect which block is being looked at
     const raycaster = new THREE.Raycaster();
     const direction = new THREE.Vector3();
@@ -148,12 +164,32 @@ function breakBlock() {
     const intersects = raycaster.intersectObjects(scene.children); // Check for intersections with the blocks
     if (intersects.length > 0) {
         const block = intersects[0].object; // Get the first intersected object
-        scene.remove(block); // Remove the block from the scene
+        if (!isHoldingBlock) {
+            isHoldingBlock = true; // Start holding the block
+            holdTimer = 0; // Reset hold timer
+            const holdInterval = setInterval(() => {
+                holdTimer += 0.1; // Increment hold timer by 0.1 seconds
+                if (holdTimer >= 2) { // If holding for 2 seconds
+                    if (inventory.length < maxInventorySize) { // Check if there's room in the inventory
+                        inventory.push(block); // Add block to inventory
+                        scene.remove(block); // Remove the block from the scene
+                        console.log("Collected a block! Inventory size: ", inventory.length); // Debugging output
+                    }
+                    clearInterval(holdInterval); // Stop the interval
+                    isHoldingBlock = false; // Reset holding status
+                }
+            }, 100); // Run every 100 ms
+        }
+    } else {
+        isHoldingBlock = false; // Reset if not holding a block
     }
 }
 
-// Listen for mouse clicks to break blocks
-document.addEventListener('mousedown', breakBlock);
+// Listen for mouse down to start collecting blocks
+document.addEventListener('mousedown', collectBlock);
+document.addEventListener('mouseup', () => {
+    isHoldingBlock = false; // Reset holding status on mouse up
+});
 
 // Handle window resize
 window.addEventListener('resize', () => {
@@ -168,8 +204,8 @@ window.addEventListener('resize', () => {
 function animate() {
     requestAnimationFrame(animate);
     updatePlayer(); // Update player movement
-    renderer.render(scene, camera);
+    renderer.render(scene, camera); // Render the scene
 }
 
-// Start animation
+// Start the animation loop
 animate();
