@@ -8,6 +8,11 @@ document.body.appendChild(renderer.domElement);
 // Set the background color of the scene
 renderer.setClearColor(0x87CEEB, 1); // Sky blue color
 
+// Load textures
+const textureLoader = new THREE.TextureLoader();
+const grassTexture = textureLoader.load('textures/grass.png'); // Replace with your grass texture path
+const dirtTexture = textureLoader.load('textures/dirt.png'); // Replace with your dirt texture path
+
 // Generate a simple block world using Perlin noise
 const blockSize = 1;
 const worldWidth = 50; // Increase for larger worlds
@@ -16,20 +21,20 @@ const noiseScale = 0.1; // Adjust for terrain smoothness
 const simplex = new SimplexNoise();
 
 // Function to create a block
-function createBlock(x, y, z, color) {
+function createBlock(x, y, z, texture) {
     const geometry = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
-    const material = new THREE.MeshBasicMaterial({ color: color });
+    const material = new THREE.MeshBasicMaterial({ map: texture }); // Use texture
     const block = new THREE.Mesh(geometry, material);
     block.position.set(x * blockSize, y * blockSize, z * blockSize);
     scene.add(block);
 }
 
-// Generate the world using Perlin noise
+// Generate the world using Perlin noise and ensure no holes
 for (let x = 0; x < worldWidth; x++) {
     for (let z = 0; z < worldHeight; z++) {
         // Get height based on noise value
         const height = Math.floor(simplex.noise2D(x * noiseScale, z * noiseScale) * 5); // Max height of 5 blocks
-        const blockType = height > 0 ? 0x00ff00 : 0x8B4513; // Green for grass, brown for dirt
+        const blockType = height > 0 ? grassTexture : dirtTexture; // Use textures for grass and dirt
         for (let y = 0; y <= height; y++) {
             createBlock(x, y, z, blockType);
         }
@@ -41,8 +46,9 @@ camera.position.set(25, 1.5, 25); // Adjust height to be just above the blocks
 
 // Player controls
 const playerSpeed = 0.1;
-const lookSpeed = 0.1; // Speed of looking around
+const jumpForce = 0.2; // Jumping force
 let velocity = new THREE.Vector3(0, 0, 0);
+let isJumping = false;
 const keys = {};
 
 window.addEventListener('keydown', (event) => {
@@ -61,20 +67,22 @@ function lockPointer() {
 document.body.addEventListener('click', lockPointer);
 
 // Mouse movement for looking around
-let pitch = 0; // Up and down rotation
-let yaw = 0; // Left and right rotation
+let pitch = 0; // Up and down rotation (X-axis)
+let yaw = 0; // Left and right rotation (Y-axis)
+const lookSensitivity = 0.1; // Sensitivity for vertical look
 
+// Adjust the camera rotation logic to lock the Z-axis (roll)
 document.addEventListener('mousemove', (event) => {
     if (document.pointerLockElement) {
-        yaw -= event.movementX * lookSpeed; // Look left/right
-        pitch -= event.movementY * lookSpeed; // Look up/down
+        yaw -= event.movementX * lookSensitivity; // Left/right
+        pitch -= event.movementY * lookSensitivity; // Up/down
 
-        // Clamp pitch to prevent flipping
+        // Clamp pitch to prevent flipping (X-axis rotation between -90° and 90°)
         pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
 
-        // Apply camera rotation
-        camera.rotation.x = pitch; // Up/down rotation
-        camera.rotation.y = THREE.MathUtils.degToRad(yaw); // Left/right rotation
+        // Apply camera rotation using Euler angles (yaw for left/right, pitch for up/down)
+        camera.rotation.order = "YXZ"; // Yaw (Y) first, then pitch (X)
+        camera.rotation.set(pitch, yaw, 0); // Keep Z-axis (roll) locked at 0
     }
 });
 
@@ -94,12 +102,41 @@ function updatePlayer() {
         velocity.x = playerSpeed;
     }
 
-    // Update camera position based on the direction it's facing
-    camera.position.x += velocity.x * Math.sin(camera.rotation.y);
-    camera.position.z += velocity.z * Math.cos(camera.rotation.y);
+    // Jumping logic
+    if (keys['Space'] && !isJumping) {
+        isJumping = true;
+        velocity.y = jumpForce; // Initial jump velocity
+    }
 
-    // Ensure the camera stays above ground level
-    camera.position.y = 1.5; // Maintain a height above the ground
+    // Apply gravity
+    if (camera.position.y > 1.5) {
+        velocity.y -= 0.01; // Gravity effect
+    } else {
+        isJumping = false; // Reset jumping when hitting the ground
+        camera.position.y = 1.5; // Ensure the camera stays above ground
+        velocity.y = 0; // Reset vertical velocity when on the ground
+    }
+
+    // Move the camera based on the direction it's facing
+    const direction = new THREE.Vector3();
+    camera.getWorldDirection(direction); // Get the direction the camera is facing
+    direction.y = 0; // Ignore vertical direction for horizontal movement
+    direction.normalize(); // Normalize direction to ensure consistent speed
+
+    // Update camera position based on direction
+    camera.position.x += direction.x * -velocity.z; // Reverse movement for forward
+    camera.position.z += direction.z * -velocity.z; // Reverse movement for forward
+    camera.position.y += velocity.y; // Update vertical position
+
+    // Collision detection to prevent phasing through blocks
+    camera.position.x = Math.max(0, Math.min(camera.position.x, worldWidth - 1)); // Constrain camera within bounds
+    camera.position.z = Math.max(0, Math.min(camera.position.z, worldHeight - 1));
+
+    // Check collision with ground (simple method)
+    const groundHeight = Math.floor(simplex.noise2D(camera.position.x * noiseScale, camera.position.z * noiseScale) * 5); // Check height at camera position
+    if (camera.position.y < groundHeight + 1.5) {
+        camera.position.y = groundHeight + 1.5; // Place the camera on top of the ground
+    }
 }
 
 // Handle window resize
