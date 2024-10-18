@@ -12,10 +12,6 @@ renderer.setClearColor(0x87CEEB, 1); // Sky blue color
 const textureLoader = new THREE.TextureLoader();
 const grassTexture = textureLoader.load('textures/grass.png');
 
-// Inventory to store collected blocks
-const inventory = [];
-const maxInventorySize = 10; // Max blocks in inventory
-
 // World parameters
 const blockSize = 1;
 const chunkSize = 10; // 10 by 10 blocks per chunk
@@ -24,7 +20,7 @@ const noiseScale = 0.1; // Adjust for terrain smoothness
 const simplex = new SimplexNoise();
 
 // To store generated chunks
-const chunks = {};
+let chunks = {}; // Store rendered chunks
 
 // Function to create a block
 function createBlock(x, y, z, texture) {
@@ -32,37 +28,42 @@ function createBlock(x, y, z, texture) {
     const material = new THREE.MeshBasicMaterial({ map: texture });
     const block = new THREE.Mesh(geometry, material);
     block.position.set(x * blockSize, y * blockSize, z * blockSize);
-    scene.add(block);
+    return block;
 }
 
 // Function to generate a chunk
 function generateChunk(chunkX, chunkZ) {
+    const chunk = new THREE.Group(); // Create a group to contain blocks of this chunk
     for (let x = 0; x < chunkSize; x++) {
         for (let z = 0; z < chunkSize; z++) {
             const worldX = chunkX * chunkSize + x;
             const worldZ = chunkZ * chunkSize + z;
             const height = Math.floor(simplex.noise2D(worldX * noiseScale, worldZ * noiseScale) * 5); // Max height of 5 blocks
             for (let y = 0; y <= height; y++) {
-                createBlock(worldX, y, worldZ, grassTexture); // Create blocks using grass texture
+                const block = createBlock(worldX, y, worldZ, grassTexture); // Create blocks using grass texture
+                chunk.add(block); // Add the block to the chunk
             }
         }
     }
+    return chunk; // Return the chunk group
 }
 
 // Function to update the rendered chunks based on render distance
 function updateChunks(renderDistance) {
     // Clear existing chunks
     for (const chunkKey in chunks) {
-        scene.remove(chunks[chunkKey]);
+        scene.remove(chunks[chunkKey]); // Remove from scene
+        delete chunks[chunkKey]; // Remove from storage
     }
-    chunks = {}; // Reset chunks storage
 
     const radius = Math.floor(renderDistance / 2); // Calculate the chunk radius
     for (let x = -radius; x <= radius; x++) {
         for (let z = -radius; z <= radius; z++) {
             const chunkKey = `${x}_${z}`;
             if (!chunks[chunkKey]) {
-                chunks[chunkKey] = generateChunk(x, z); // Generate new chunk
+                const newChunk = generateChunk(x, z); // Generate new chunk
+                chunks[chunkKey] = newChunk; // Store the chunk in chunks object
+                scene.add(newChunk); // Add the chunk to the scene
             }
         }
     }
@@ -193,11 +194,10 @@ function collectBlock() {
                 if (holdTimer >= 2) { // If holding for 2 seconds
                     if (inventory.length < maxInventorySize) { // Check if there's room in the inventory
                         inventory.push(block); // Add block to inventory
-                        scene.remove(block); // Remove the block from the scene
-                        console.log("Collected a block! Inventory size: ", inventory.length); // Debugging output
+                        scene.remove(block); // Remove block from scene
+                        clearInterval(holdInterval); // Stop the interval
+                        isHoldingBlock = false; // Reset holding state
                     }
-                    clearInterval(holdInterval); // Stop the interval
-                    isHoldingBlock = false; // Reset holding state
                 }
             }, 100); // Check every 100ms
         }
