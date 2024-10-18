@@ -8,6 +8,18 @@ document.body.appendChild(renderer.domElement);
 // Set the background color of the scene
 renderer.setClearColor(0x87CEEB, 1); // Sky blue color
 
+// Load textures
+const textureLoader = new THREE.TextureLoader();
+const grassTexture = textureLoader.load('Textures/grass.png');
+const dirtTexture = textureLoader.load('Textures/dirt.png'); // If you want to add a dirt texture later
+
+// Create water material
+const waterMaterial = new THREE.MeshBasicMaterial({
+    color: 0x0000ff,
+    transparent: true,
+    opacity: 0.5,
+});
+
 // Generate a simple block world using Perlin noise
 const blockSize = 1;
 const worldWidth = 50; // Increase for larger worlds
@@ -21,12 +33,20 @@ const hotbarSize = 9; // Size of hotbar
 let selectedSlot = 0; // Current selected slot in the hotbar
 
 // Function to create a block
-function createBlock(x, y, z, color) {
+function createBlock(x, y, z, texture) {
     const geometry = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
-    const material = new THREE.MeshBasicMaterial({ color: color });
+    const material = new THREE.MeshBasicMaterial({ map: texture }); // Use texture for material
     const block = new THREE.Mesh(geometry, material);
     block.position.set(x * blockSize, y * blockSize, z * blockSize);
     return block;
+}
+
+// Function to create water block
+function createWaterBlock(x, y, z) {
+    const geometry = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
+    const waterBlock = new THREE.Mesh(geometry, waterMaterial);
+    waterBlock.position.set(x * blockSize, y * blockSize, z * blockSize);
+    return waterBlock;
 }
 
 // To store chunks
@@ -40,14 +60,21 @@ function generateChunk(chunkX, chunkZ) {
             const worldX = chunkX * 10 + x;
             const worldZ = chunkZ * 10 + z;
             const height = Math.floor(simplex.noise2D(worldX * noiseScale, worldZ * noiseScale) * 5); // Max height of 5 blocks
-            const blockType = height > 0 ? 0x00ff00 : 0x8B4513; // Green for grass, brown for dirt
+            const blockType = height > 0 ? 'grass' : 'dirt'; // Use 'grass' or 'dirt' for block type
             for (let y = 0; y <= height; y++) {
-                const block = createBlock(worldX, y, worldZ, blockType); // Create the block
+                const texture = blockType === 'grass' ? grassTexture : dirtTexture; // Select texture based on block type
+                const block = createBlock(worldX, y, worldZ, texture); // Create the block
                 chunk.add(block); // Add the block to the chunk
             }
-            // Add grass block at the top of the grass layer
-            if (height > 0) {
-                const grassBlock = createBlock(worldX, height, worldZ, 0x00ff00);
+
+            // Check for gaps and create water blocks
+            if (height === 0) {
+                // If there's a gap (no blocks), create water
+                const waterBlock = createWaterBlock(worldX, 0, worldZ); // Place water at the ground level
+                chunk.add(waterBlock); // Add water block to the chunk
+            } else {
+                // Add grass block at the top of the grass layer
+                const grassBlock = createBlock(worldX, height, worldZ, grassTexture);
                 grassBlock.userData = { type: 'grass' }; // Mark this block as grass
                 chunk.add(grassBlock);
             }
@@ -89,6 +116,7 @@ const playerSpeed = 0.1;
 const jumpForce = 0.2; // Jumping force
 let velocity = new THREE.Vector3(0, 0, 0);
 let isJumping = false;
+let isSwimming = false; // Swimming state
 const keys = {};
 
 window.addEventListener('keydown', (event) => {
@@ -141,7 +169,7 @@ function breakBlock(worldX, worldY, worldZ) {
         const grassColor = 0x00ff00; // Grass color
         if (blockToBreak.userData.type === 'grass') {
             // Create a collectible item when breaking grass
-            const grassItem = createBlock(worldX, worldY, worldZ, grassColor);
+            const grassItem = createBlock(worldX, worldY, worldZ, grassTexture);
             grassItem.userData = { type: 'grass_item' }; // Mark this block as a collectible item
             grassItem.position.y += 0.5; // Slightly above ground
             scene.add(grassItem); // Add the grass item to the scene
@@ -172,10 +200,28 @@ function collectItem(worldX, worldZ) {
 // Function to place an item from the inventory
 function placeItem(worldX, worldY, worldZ) {
     if (inventory[selectedSlot] === 'grass') { // Only allowing placement of grass for simplicity
-        const grassBlock = createBlock(worldX, worldY, worldZ, 0x00ff00);
+        const grassBlock = createBlock(worldX, worldY, worldZ, grassTexture);
         scene.add(grassBlock); // Add the grass block to the scene
         inventory[selectedSlot] = null; // Remove the item from the hotbar
     }
+}
+
+// Function to check if player is in water
+function checkWaterCollision() {
+    const worldX = Math.floor(camera.position.x);
+    const worldZ = Math.floor(camera.position.z);
+
+    // Check if there's a water block at the player's current position
+    const waterBlock = scene.children.find(child => {
+        return (
+            child instanceof THREE.Mesh &&
+            child.material === waterMaterial &&
+            child.position.x === worldX * blockSize &&
+            child.position.z === worldZ * blockSize
+        );
+    });
+
+    isSwimming = !!waterBlock; // Set swimming state based on whether the player is in water
 }
 
 // Handle movement
@@ -220,29 +266,23 @@ function updatePlayer() {
     camera.position.z += direction.z * -velocity.z; // Reverse movement for forward
     camera.position.y += velocity.y; // Update vertical position
 
+    // Check if player is swimming
+    checkWaterCollision(); // Check if the player is in water
+
+    // Modify movement speed when swimming
+    if (isSwimming) {
+        velocity.y = 0.05; // Adjust swimming speed (could be modified for more realistic swimming)
+        camera.position.y += velocity.y; // Move up slightly while swimming
+    }
+
     // Collision detection to prevent phasing through blocks
     camera.position.x = Math.max(0, Math.min(camera.position.x, worldWidth - 1)); // Constrain camera within bounds
     camera.position.z = Math.max(0, Math.min(camera.position.z, worldHeight - 1));
-
-    // Check for item collection
-    const worldX = Math.floor(camera.position.x);
-    const worldZ = Math.floor(camera.position.z);
-    collectItem(worldX, worldZ); // Collect item if standing on it
 
     // Check collision with ground (simple method)
     const groundHeight = Math.floor(simplex.noise2D(camera.position.x * noiseScale, camera.position.z * noiseScale) * 5); // Check height at camera position
     if (camera.position.y < groundHeight + 1.5) {
         camera.position.y = groundHeight + 1.5; // Place the camera on top of the ground
-    }
-
-    // Check for block breaking on left click
-    if (keys['Mouse0']) { // Left mouse button
-        breakBlock(worldX, Math.floor(camera.position.y), worldZ); // Break block under player
-    }
-
-    // Check for placing item on right click
-    if (keys['Mouse1']) { // Right mouse button
-        placeItem(worldX, Math.floor(camera.position.y), worldZ); // Place block under player
     }
 }
 
