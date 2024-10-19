@@ -151,8 +151,8 @@ function updateCrosshair() {
     const screenPosition = new THREE.Vector3(0, 0, -5).applyMatrix4(camera.matrixWorld);
     const vector = screenPosition.project(camera);
 
-    const x = (vector.x * .5 + .5) * window.innerWidth;
-    const y = (-(vector.y * .5) + .5) * window.innerHeight;
+    const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+    const y = (-(vector.y * 0.5) + 0.5) * window.innerHeight;
 
     crosshair.style.left = `${x}px`;
     crosshair.style.top = `${y}px`;
@@ -230,9 +230,11 @@ function updatePlayer() {
     // Calculate the potential new position
     const newPosition = camera.position.clone().add(velocity);
 
-    // Check for climbing
+    // Check for climbing and update the position accordingly
     if (checkClimbing(newPosition)) {
-        camera.position.y += 1; // Climb up one unit
+        // Climb up one unit and reset velocity
+        camera.position.y += 1; 
+        velocity.set(0, 0, 0); // Reset velocity to avoid additional climbing
     } else if (!checkCollisions(newPosition)) {
         // No collision, update the player's position
         camera.position.copy(newPosition);
@@ -260,7 +262,7 @@ function checkClimbing(newPosition) {
         const block = chunk.children[i];
         if (
             Math.abs(block.position.x - newPosition.x) < 0.5 &&
-            Math.abs(block.position.y - newPosition.y) < 1.5 && // Check for the block directly above
+            Math.abs(block.position.y - (newPosition.y - 1)) < 0.5 && // Check for the block directly below
             Math.abs(block.position.z - newPosition.z) < 0.5
         ) {
             return true; // Climbing condition met
@@ -269,45 +271,23 @@ function checkClimbing(newPosition) {
     return false; // No climbing conditions met
 }
 
-// Function to check for collisions with blocks
-function checkCollisions(newPosition) {
-    const blockX = Math.floor(newPosition.x);
-    const blockY = Math.floor(newPosition.y);
-    const blockZ = Math.floor(newPosition.z);
-
-    const chunkX = Math.floor(blockX / chunkSize);
-    const chunkZ = Math.floor(blockZ / chunkSize);
-
-    const chunk = chunks[`${chunkX},${chunkZ}`];
-    if (!chunk) return false; // No chunk means no collision
-
-    for (let i = 0; i < chunk.children.length; i++) {
-        const block = chunk.children[i];
-        if (
-            Math.abs(block.position.x - newPosition.x) < 0.5 &&
-            Math.abs(block.position.y - newPosition.y) < 0.5 &&
-            Math.abs(block.position.z - newPosition.z) < 0.5
-        ) {
-            return true; // Collision detected
-        }
-    }
-    return false; // No collision
-}
-
-// Keyboard event listeners
+// Handle key presses for movement
 document.addEventListener('keydown', (event) => {
-    keys[event.code] = true;
-});
-document.addEventListener('keyup', (event) => {
-    keys[event.code] = false;
+    keys[event.code] = true; // Mark the key as pressed
 });
 
-// Main game loop
+// Handle key releases
+document.addEventListener('keyup', (event) => {
+    keys[event.code] = false; // Mark the key as released
+});
+
+// Animation loop
 function animate() {
-    requestAnimationFrame(animate);
+    requestAnimationFrame(animate); // Call the next frame
     updatePlayer(); // Update player movement
-    updateChunks(); // Update the chunks around the player
+    updateChunks(); // Update the visible chunks
     renderer.render(scene, camera); // Render the scene
 }
 
-animate(); // Start the animation loop
+// Start the animation loop
+animate();
