@@ -184,7 +184,15 @@ document.addEventListener('mousemove', (event) => {
 
 // Updated function to handle player movement and climbing
 function updatePlayer() {
-    velocity.set(0, 0, 0); // Reset velocity
+    // Apply gravity
+    if (camera.position.y > 1.5) {
+        velocity.y -= 0.01; // Apply gravity
+    } else {
+        camera.position.y = 1.5; // Reset camera height to ground level
+        velocity.y = 0; // Reset vertical velocity when on the ground
+    }
+
+    velocity.set(0, velocity.y, 0); // Reset horizontal velocity
 
     // Calculate the forward direction based on the camera's rotation, ignoring the Y-axis
     const forward = new THREE.Vector3(0, 0, -1).applyEuler(camera.rotation);
@@ -208,23 +216,9 @@ function updatePlayer() {
     }
 
     // Jumping logic
-    if (keys['Space'] && !isJumping) {
+    if (keys['Space'] && camera.position.y <= 1.5 && !isJumping) { // Check if on ground
         isJumping = true;
         velocity.y = jumpForce; // Apply jumping force
-    }
-
-    // Apply gravity
-    if (isJumping) {
-        velocity.y -= 0.01; // Simple gravity
-    }
-
-    // Check for ground contact to reset jumping
-    if (camera.position.y <= 1.5) {
-        isJumping = false;
-        camera.position.y = 1.5; // Reset camera height to ground level
-    } else {
-        // Limit upward movement to prevent flying
-        camera.position.y = Math.max(camera.position.y, 1.5);
     }
 
     // Calculate the potential new position
@@ -232,7 +226,7 @@ function updatePlayer() {
 
     // Check for climbing
     if (checkClimbing(newPosition)) {
-        camera.position.y += 1; // Climb up one unit
+        newPosition.y += 1; // Climb up one unit
         camera.position.x = newPosition.x; // Adjust x position
         camera.position.z = newPosition.z; // Adjust z position
     } else if (!checkCollisions(newPosition)) {
@@ -246,74 +240,45 @@ function updatePlayer() {
     updateCrosshair(); // Update crosshair position
 }
 
-// Function to check for climbing conditions
-function checkClimbing(newPosition) {
-    const blockX = Math.floor(newPosition.x);
-    const blockY = Math.floor(newPosition.y);
-    const blockZ = Math.floor(newPosition.z);
-
-    const chunkX = Math.floor(blockX / chunkSize);
-    const chunkZ = Math.floor(blockZ / chunkSize);
-
-    const chunk = chunks[`${chunkX},${chunkZ}`];
-    if (!chunk) return false; // No chunk means no climbing
-
-    // Check for blocks in front of the player
-    for (let i = 0; i < chunk.children.length; i++) {
-        const block = chunk.children[i];
-        if (
-            Math.abs(block.position.x - newPosition.x) < 0.5 && // Check within X
-            Math.abs(block.position.z - newPosition.z) < 0.5 && // Check within Z
-            block.position.y === Math.floor(newPosition.y) + 1 // Check if the block is one unit higher
-        ) {
-            return true; // Climbing condition met
-        }
-    }
-    return false; // No climbing conditions met
-}
-
-// Function to check for collisions with blocks
+// Collision detection
 function checkCollisions(newPosition) {
-    const blockX = Math.floor(newPosition.x);
-    const blockY = Math.floor(newPosition.y);
-    const blockZ = Math.floor(newPosition.z);
-
-    const chunkX = Math.floor(blockX / chunkSize);
-    const chunkZ = Math.floor(blockZ / chunkSize);
-
-    const chunk = chunks[`${chunkX},${chunkZ}`];
-    if (!chunk) return false; // No chunk means no collision
-
-    // Check for blocks directly in front of the player
-    for (let i = 0; i < chunk.children.length; i++) {
-        const block = chunk.children[i];
-        if (
-            Math.abs(block.position.x - newPosition.x) < 0.5 &&
-            Math.abs(block.position.y - newPosition.y) < 0.5 &&
-            Math.abs(block.position.z - newPosition.z) < 0.5
-        ) {
+    // Iterate through all blocks in the scene to check for collisions
+    const blocks = scene.children.filter(child => child.userData.type); // Filter only blocks
+    for (const block of blocks) {
+        if (block.position.distanceTo(newPosition) < 0.5) { // Check distance
             return true; // Collision detected
         }
     }
     return false; // No collision
 }
 
-// Key down events for player movement
+// Climbing detection
+function checkClimbing(newPosition) {
+    const blocks = scene.children.filter(child => child.userData.type);
+    for (const block of blocks) {
+        if (block.position.x === newPosition.x && block.position.z === newPosition.z &&
+            newPosition.y + 1 === block.position.y && (block.userData.type === 'grass' || block.userData.type === 'stone')) { // Check if directly below
+            return true; // Climbing allowed
+        }
+    }
+    return false; // Not climbing
+}
+
+// Keyboard controls
 document.addEventListener('keydown', (event) => {
-    keys[event.code] = true; // Set the key pressed
+    keys[event.code] = true; // Mark the key as pressed
 });
-
-// Key up events for player movement
 document.addEventListener('keyup', (event) => {
-    keys[event.code] = false; // Reset the key released
+    keys[event.code] = false; // Mark the key as released
 });
 
-// Render loop
+// Animation loop
 function animate() {
-    requestAnimationFrame(animate); // Create an animation loop
+    requestAnimationFrame(animate);
     updatePlayer(); // Update player movement
     updateChunks(); // Update visible chunks
     renderer.render(scene, camera); // Render the scene
 }
 
-animate(); // Start the animation
+// Start the animation loop
+animate();
