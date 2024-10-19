@@ -1,4 +1,4 @@
-// Setup basic scene, camera, and renderer
+// Setup basic scene, camera, and renderer 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ alpha: true }); // Enable alpha for transparency
@@ -20,7 +20,7 @@ let renderDistance = 16; // Initial render distance
 const worldWidth = 200; // Increased world size
 const worldHeight = 204; // Increased world size
 const noiseScale = 0.1; // Adjust for terrain smoothness
-let simplex = new SimplexNoise();
+let simplex = new SimplexNoise(); // Initialize Simplex noise
 
 // Function to create a block
 function createBlock(x, y, z, texture) {
@@ -56,8 +56,6 @@ const jumpForce = 0.3; // Jumping force increased
 let velocity = new THREE.Vector3(0, 0, 0);
 let isJumping = false;
 const keys = {};
-let mousePressed = false;
-let selectedBlock = null;
 
 // Inventory management functions
 function addToInventory(block) {
@@ -194,35 +192,11 @@ window.addEventListener('resize', () => {
     camera.updateProjectionMatrix();
 });
 
-// Render distance slider event
-const renderDistanceInput = document.getElementById('renderDistance');
-const renderDistanceValue = document.getElementById('renderDistanceValue');
-
-renderDistanceInput.addEventListener('input', (event) => {
-    renderDistance = parseInt(event.target.value);
-    renderDistanceValue.textContent = renderDistance; // Update the displayed value
-    regenerateWorld(); // Regenerate the world based on new render distance
-});
-
-// Function to regenerate the world based on the render distance
-function regenerateWorld() {
-    // Clear existing blocks
-    while (scene.children.length) {
-        scene.remove(scene.children[0]); // Clear all objects in the scene
-    }
-    generateWorld(); // Regenerate the world with the updated render distance
-}
-
-// Render function
-function render() {
-    renderer.render(scene, camera);
-}
-
 // Animation loop
 function animate() {
     requestAnimationFrame(animate);
     updatePlayer(); // Update player movement
-    render(); // Render the scene
+    renderer.render(scene, camera);
 }
 
 // Start animation
