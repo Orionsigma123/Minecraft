@@ -182,7 +182,7 @@ document.addEventListener('mousemove', (event) => {
     }
 });
 
-// Function to handle player movement based on head orientation
+// Updated function to handle player movement and climbing
 function updatePlayer() {
     velocity.set(0, 0, 0); // Reset velocity
 
@@ -230,8 +230,10 @@ function updatePlayer() {
     // Calculate the potential new position
     const newPosition = camera.position.clone().add(velocity);
 
-    // Check for collisions
-    if (!checkCollisions(newPosition)) {
+    // Check for climbing
+    if (checkClimbing(newPosition)) {
+        camera.position.y += 1; // Climb up one unit
+    } else if (!checkCollisions(newPosition)) {
         // No collision, update the player's position
         camera.position.copy(newPosition);
     } else {
@@ -240,6 +242,31 @@ function updatePlayer() {
     }
 
     updateCrosshair(); // Update crosshair position
+}
+
+// Function to check for climbing conditions
+function checkClimbing(newPosition) {
+    const blockX = Math.floor(newPosition.x);
+    const blockY = Math.floor(newPosition.y);
+    const blockZ = Math.floor(newPosition.z);
+
+    const chunkX = Math.floor(blockX / chunkSize);
+    const chunkZ = Math.floor(blockZ / chunkSize);
+
+    const chunk = chunks[`${chunkX},${chunkZ}`];
+    if (!chunk) return false; // No chunk means no climbing
+
+    for (let i = 0; i < chunk.children.length; i++) {
+        const block = chunk.children[i];
+        if (
+            Math.abs(block.position.x - newPosition.x) < 0.5 &&
+            Math.abs(block.position.y - newPosition.y) < 1.5 && // Check for the block directly above
+            Math.abs(block.position.z - newPosition.z) < 0.5
+        ) {
+            return true; // Climbing condition met
+        }
+    }
+    return false; // No climbing conditions met
 }
 
 // Function to check for collisions with blocks
