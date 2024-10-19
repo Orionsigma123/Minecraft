@@ -48,7 +48,7 @@ function generateWorld() {
 generateWorld();
 
 // Position the camera to be just above the ground
-camera.position.set(25, 0.4, 25); // Adjust height to be 2 blocks tall
+camera.position.set(25, 2, 25); // Adjust height to be 2 blocks tall
 
 // Player controls
 const playerSpeed = 0.1;
@@ -213,11 +213,16 @@ function regenerateWorld() {
     generateWorld(); // Regenerate the world with the updated render distance
 }
 
+// Render function
+function render() {
+    renderer.render(scene, camera);
+}
+
 // Animation loop
 function animate() {
     requestAnimationFrame(animate);
     updatePlayer(); // Update player movement
-    renderer.render(scene, camera);
+    render(); // Render the scene
 }
 
 // Start animation
