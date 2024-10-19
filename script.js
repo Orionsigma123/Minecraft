@@ -23,7 +23,7 @@ const worlds = {};
 const chunkSize = 16; // Size of each chunk
 const chunkHeight = 5; // Max height of blocks in a chunk
 let renderDistance = 4; // Number of chunks to render around the player
-let noiseScale = 0.1; // Adjust for terrain smoothness
+let noiseScale = 0.2; // Adjust for terrain smoothness
 let simplex = new SimplexNoise(); // Initialize SimplexNoise
 const chunks = {}; // Object to store generated chunks
 
@@ -232,21 +232,16 @@ function updatePlayer() {
 
     // Check for collisions
     if (!checkCollisions(newPosition)) {
-        camera.position.copy(newPosition); // Apply the new position if no collision
+        camera.position.copy(newPosition); // Move the camera if no collisions detected
     }
-
-    updateChunks(); // Update chunks based on the new position
-    updateCrosshair(); // Update the crosshair position
 }
 
-// Keydown event listener for movement
+// Key down/up event handling
 document.addEventListener('keydown', (event) => {
-    keys[event.code] = true;
+    keys[event.code] = true; // Mark the key as pressed
 });
-
-// Keyup event listener for stopping movement
 document.addEventListener('keyup', (event) => {
-    keys[event.code] = false;
+    keys[event.code] = false; // Mark the key as released
 });
 
 // Function to check for collisions with blocks, with step-up logic
@@ -265,31 +260,39 @@ function checkCollisions(newPosition) {
 
     for (let i = 0; i < chunk.children.length; i++) {
         const block = chunk.children[i];
-        
-        // Check if there's a collision at the current level
-        if (
-            Math.abs(block.position.x - newPosition.x) < 0.5 &&
-            Math.abs(block.position.z - newPosition.z) < 0.5 &&
-            Math.abs(block.position.y - newPosition.y) < 0.5
-        ) {
-            collisionDetected = true; // Collision detected at this height
 
-            // Check if there's space one block above to allow stepping up
+        // Check for collision using bounding box
+        const blockBoundingBox = new THREE.Box3().setFromObject(block);
+
+        if (blockBoundingBox.containsPoint(newPosition)) {
+            collisionDetected = true; // Collision detected
+
+            // Step-up logic: if player is near the block and not jumping
             if (newPosition.y - block.position.y < 0.5 && !isJumping) {
-                newPosition.y += 1; // Step up by 1 block
-                collisionDetected = false; // Allow movement if stepping up
-                break;
+                const stepPosition = newPosition.clone();
+                stepPosition.y += 1; // Try stepping up by 1 block
+
+                // Check if stepping up leads to another collision
+                if (!blockBoundingBox.containsPoint(stepPosition)) {
+                    newPosition.y += 1; // Step up by 1 block if it's clear
+                    collisionDetected = false; // No collision, movement allowed
+                }
+                break; // Break as we found a collision
             }
         }
     }
 
-    return collisionDetected; // Return true if a collision was detected and stepping is not possible
+    return collisionDetected; // Return true if a collision was detected
 }
 
 // Render loop
 function animate() {
     requestAnimationFrame(animate);
-    updatePlayer();
-    renderer.render(scene, camera);
+    updateChunks(); // Update chunks based on player position
+    updatePlayer(); // Update player position
+    updateCrosshair(); // Update crosshair position
+    renderer.render(scene, camera); // Render the scene
 }
-animate(); // Start the animation loop
+
+// Start the animation loop
+animate();
