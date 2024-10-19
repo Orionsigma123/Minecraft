@@ -20,7 +20,7 @@ let renderDistance = 16; // Initial render distance
 const worldWidth = 200; // Increased world size
 const worldHeight = 204; // Increased world size
 const noiseScale = 0.1; // Adjust for terrain smoothness
-let simplex = new SimplexNoise(); // Initialize Simplex noise
+const simplex = new SimplexNoise(); // Initialize Simplex noise
 
 // Function to create a block
 function createBlock(x, y, z, texture) {
