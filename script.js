@@ -232,19 +232,17 @@ function updatePlayer() {
 
     // Check for collisions
     if (!checkCollisions(newPosition)) {
-        camera.position.copy(newPosition); // Move the camera if no collisions detected
+        // No collision, update the player's position
+        camera.position.copy(newPosition);
+    } else {
+        // Collision detected, stop movement
+        velocity.set(0, 0, 0);
     }
+
+    updateCrosshair(); // Update crosshair position
 }
 
-// Key down/up event handling
-document.addEventListener('keydown', (event) => {
-    keys[event.code] = true; // Mark the key as pressed
-});
-document.addEventListener('keyup', (event) => {
-    keys[event.code] = false; // Mark the key as released
-});
-
-// Function to check for collisions with blocks, with step-up logic
+// Function to check for collisions with blocks
 function checkCollisions(newPosition) {
     const blockX = Math.floor(newPosition.x);
     const blockY = Math.floor(newPosition.y);
@@ -256,43 +254,33 @@ function checkCollisions(newPosition) {
     const chunk = chunks[`${chunkX},${chunkZ}`];
     if (!chunk) return false; // No chunk means no collision
 
-    let collisionDetected = false;
-
     for (let i = 0; i < chunk.children.length; i++) {
         const block = chunk.children[i];
-
-        // Check for collision using bounding box
-        const blockBoundingBox = new THREE.Box3().setFromObject(block);
-
-        if (blockBoundingBox.containsPoint(newPosition)) {
-            collisionDetected = true; // Collision detected
-
-            // Step-up logic: if player is near the block and not jumping
-            if (newPosition.y - block.position.y < 0.5 && !isJumping) {
-                const stepPosition = newPosition.clone();
-                stepPosition.y += 1; // Try stepping up by 1 block
-
-                // Check if stepping up leads to another collision
-                if (!blockBoundingBox.containsPoint(stepPosition)) {
-                    newPosition.y += 1; // Step up by 1 block if it's clear
-                    collisionDetected = false; // No collision, movement allowed
-                }
-                break; // Break as we found a collision
-            }
+        if (
+            Math.abs(block.position.x - newPosition.x) < 0.5 &&
+            Math.abs(block.position.y - newPosition.y) < 0.5 &&
+            Math.abs(block.position.z - newPosition.z) < 0.5
+        ) {
+            return true; // Collision detected
         }
     }
-
-    return collisionDetected; // Return true if a collision was detected
+    return false; // No collision
 }
 
-// Render loop
+// Keyboard event listeners
+document.addEventListener('keydown', (event) => {
+    keys[event.code] = true;
+});
+document.addEventListener('keyup', (event) => {
+    keys[event.code] = false;
+});
+
+// Main game loop
 function animate() {
     requestAnimationFrame(animate);
-    updateChunks(); // Update chunks based on player position
-    updatePlayer(); // Update player position
-    updateCrosshair(); // Update crosshair position
+    updatePlayer(); // Update player movement
+    updateChunks(); // Update the chunks around the player
     renderer.render(scene, camera); // Render the scene
 }
 
-// Start the animation loop
-animate();
+animate(); // Start the animation loop
