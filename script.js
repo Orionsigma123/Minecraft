@@ -1,117 +1,108 @@
-// script.js
-const canvas = document.getElementById('gameCanvas');
-const context = canvas.getContext('2d');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+let scene, camera, renderer, controls;
+let inventory = [];
+let currentBlock = 'grass';
+let worldSize = 100;
+let chunkSize = 16;
+let chunks = {};
+let player;
 
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer({ canvas });
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
+// Initialize the game
+function init() {
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
 
-// World Generation
-const noise = new SimplexNoise();
-const worldSize = 100;
-const blocks = [];
-const chunkSize = 16;
-const player = { position: { x: 0, y: 5, z: 0 } }; // Player position
+    // Initialize player
+    player = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
+    scene.add(player);
+    camera.position.set(0, 2, 5);
+    camera.lookAt(player.position);
 
-function generateWorld() {
-    // Clear existing blocks
-    blocks.forEach(block => scene.remove(block));
-    blocks.length = 0; // Reset blocks array
+    // Initialize controls
+    controls = new THREE.PointerLockControls(camera, document.body);
+    document.body.appendChild(controls.getObject());
 
-    for (let x = -worldSize / 2; x < worldSize / 2; x++) {
-        for (let z = -worldSize / 2; z < worldSize / 2; z++) {
-            const height = Math.floor(noise.noise2D(x / 10, z / 10) * 10) + 5;
-            for (let y = 0; y < height; y++) {
-                const geometry = new THREE.BoxGeometry(1, 1, 1);
-                const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-                const block = new THREE.Mesh(geometry, material);
-                block.position.set(x, y, z);
-                scene.add(block);
-                blocks.push(block);
-            }
-        }
-    }
-    camera.position.set(player.position.x, player.position.y, player.position.z + 10); // Set camera position
-}
+    document.getElementById('singleplayerBtn').addEventListener('click', startSinglePlayer);
+    document.getElementById('multiplayerBtn').addEventListener('click', startMultiplayer);
+    document.getElementById('loadWorldBtn').addEventListener('click', loadWorld);
 
-// Inventory System
-let selectedBlock = 0; // index of the selected block in the inventory
-const inventory = [];
-
-function addToInventory(block) {
-    inventory.push(block);
-}
-
-function placeBlock() {
-    if (inventory[selectedBlock]) {
-        const block = inventory[selectedBlock].clone();
-        block.position.set(Math.floor(player.position.x), Math.floor(player.position.y), Math.floor(player.position.z));
-        scene.add(block);
-        blocks.push(block);
-    }
-}
-
-// Mouse Controls
-let isMouseDown = false;
-document.addEventListener('mousedown', () => { isMouseDown = true; });
-document.addEventListener('mouseup', () => { isMouseDown = false; });
-
-let pitch = 0;
-let yaw = 0;
-document.addEventListener('mousemove', (event) => {
-    if (isMouseDown) {
-        yaw -= event.movementX * 0.1;
-        pitch -= event.movementY * 0.1;
-        pitch = Math.max(-89, Math.min(89, pitch)); // Limit pitch
-        camera.rotation.set(THREE.MathUtils.degToRad(pitch), THREE.MathUtils.degToRad(yaw), 0);
-    }
-});
-
-// Menu Functionality
-document.getElementById('singleplayer').addEventListener('click', () => {
-    startSingleplayer();
-});
-
-document.getElementById('multiplayer').addEventListener('click', () => {
-    alert("Multiplayer feature is not implemented yet.");
-});
-
-function startSingleplayer() {
-    // Hide menu and start game
-    document.getElementById('menu').style.display = 'none';
-    generateWorld(); // Generate a new world
+    window.addEventListener('resize', onWindowResize, false);
+    generateWorld();
     animate();
 }
 
-// Animation Loop
-function animate() {
-    requestAnimationFrame(animate);
-    renderer.render(scene, camera);
+// Start single-player mode
+function startSinglePlayer() {
+    // Load or generate the world
+    loadWorld();
 }
 
-// Save/Load World
-function saveWorld() {
-    const worldData = blocks.map(block => block.position);
-    localStorage.setItem('minecraftWorld', JSON.stringify(worldData));
+// Start multiplayer mode
+function startMultiplayer() {
+    alert("Multiplayer mode not implemented yet.");
 }
 
+// Load world from local storage
 function loadWorld() {
-    const worldData = JSON.parse(localStorage.getItem('minecraftWorld'));
-    if (worldData) {
-        worldData.forEach(pos => {
-            const geometry = new THREE.BoxGeometry(1, 1, 1);
-            const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-            const block = new THREE.Mesh(geometry, material);
-            block.position.set(pos.x, pos.y, pos.z);
-            scene.add(block);
-            blocks.push(block);
+    const savedWorld = localStorage.getItem('minecraftWorld');
+    if (savedWorld) {
+        const blocks = JSON.parse(savedWorld);
+        blocks.forEach(block => {
+            placeBlock(block.position, block.type);
         });
+    } else {
+        alert("No saved world found.");
     }
 }
 
-// Call loadWorld on start
-loadWorld();
+// Save world to local storage
+function saveWorld() {
+    const blocks = Object.values(chunks).flat();
+    localStorage.setItem('minecraftWorld', JSON.stringify(blocks));
+}
+
+// Generate an infinite world using Perlin noise
+function generateWorld() {
+    const simplex = new SimplexNoise();
+    for (let x = -worldSize; x < worldSize; x += chunkSize) {
+        for (let z = -worldSize; z < worldSize; z += chunkSize) {
+            let height = Math.floor(simplex.noise2D(x / 20, z / 20) * 10) + 10; // Height based on Perlin noise
+            for (let y = 0; y < height; y++) {
+                placeBlock({ x, y, z }, 'grass');
+            }
+            for (let y = height; y < height + 5; y++) {
+                placeBlock({ x, y, z }, 'dirt');
+            }
+        }
+    }
+}
+
+// Place a block in the world
+function placeBlock(position, type) {
+    const blockGeometry = new THREE.BoxGeometry(1, 1, 1);
+    const blockMaterial = new THREE.MeshBasicMaterial({ color: type === 'grass' ? 0x00ff00 : 0x8B4513 });
+    const block = new THREE.Mesh(blockGeometry, blockMaterial);
+    block.position.set(position.x + 0.5, position.y + 0.5, position.z + 0.5);
+    scene.add(block);
+    if (!chunks[position.x]) chunks[position.x] = {};
+    if (!chunks[position.x][position.z]) chunks[position.x][position.z] = [];
+    chunks[position.x][position.z].push({ position, type });
+}
+
+// Handle window resize
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+// Animate the scene
+function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+}
+
+init();
