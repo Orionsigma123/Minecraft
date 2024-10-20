@@ -10,6 +10,10 @@ const movementSpeed = 0.1;
 let forward = 0, sideways = 0;
 let mouseSensitivity = 0.1;
 let isMouseLocked = false;
+const gravity = -0.01; // Gravity strength
+let velocityY = 0; // Vertical velocity
+const jumpStrength = 0.2; // Jump strength
+const groundLevel = -0.5; // Adjust this to set ground level
 const simplex = new SimplexNoise(); // Initialize Simplex Noise
 
 // Initialize the game
@@ -31,11 +35,12 @@ function init() {
     generateWorld();
     updateInventoryDisplay();
 
-    // Lock the mouse for first-person control
-    document.body.requestPointerLock();
-    document.addEventListener('mousemove', onMouseMove);
-    
-    // Ensure isMouseLocked is set to true after mouse is locked
+    // Request mouse lock on body click
+    document.body.addEventListener('click', () => {
+        document.body.requestPointerLock();
+    });
+
+    // Handle mouse lock state
     document.addEventListener('pointerlockchange', () => {
         isMouseLocked = document.pointerLockElement === document.body;
     });
@@ -45,8 +50,7 @@ function init() {
 function startGame() {
     document.getElementById('menu').style.display = 'none';
     document.getElementById('gameArea').style.display = 'block';
-    camera.position.set(playerPosition.x, playerPosition.y + 1, playerPosition.z);
-    
+    camera.position.set(playerPosition.x, playerPosition.y + 1, playerPosition.z); // Start camera at position
     animate();
 }
 
@@ -89,9 +93,37 @@ function animate() {
 
 // Update player position based on input
 function updatePlayerPosition() {
+    // Handle gravity
+    velocityY += gravity; // Apply gravity
+    playerPosition.y += velocityY; // Update vertical position
+    
+    // Check if player is on the ground
+    if (playerPosition.y < groundLevel) {
+        playerPosition.y = groundLevel; // Set to ground level
+        velocityY = 0; // Reset vertical velocity
+    }
+    
+    // Update camera position
+    camera.position.set(playerPosition.x, playerPosition.y + 1, playerPosition.z);
+    
+    // Handle movement based on input
     playerPosition.x += sideways * movementSpeed;
     playerPosition.z += forward * movementSpeed;
-    camera.position.set(playerPosition.x, playerPosition.y + 1, playerPosition.z);
+
+    // Check for collision with blocks
+    checkCollisions();
+}
+
+// Check for collisions with the world
+function checkCollisions() {
+    world.children.forEach(block => {
+        if (block.position.y - 0.5 < playerPosition.y && block.position.y + 0.5 > playerPosition.y) {
+            if (Math.abs(block.position.x - playerPosition.x) < 0.5 && Math.abs(block.position.z - playerPosition.z) < 0.5) {
+                playerPosition.y = block.position.y + 0.5; // Position player on top of the block
+                velocityY = 0; // Reset vertical velocity
+            }
+        }
+    });
 }
 
 // Handle window resize
@@ -117,7 +149,9 @@ function handleKeyDown(event) {
             sideways = 1;
             break;
         case 'Space':
-            placeBlock();
+            if (playerPosition.y === groundLevel) { // Only jump if on the ground
+                velocityY += jumpStrength; // Apply jump strength
+            }
             break;
         case 'KeyE':
             openInventory();
@@ -143,25 +177,15 @@ function handleKeyUp(event) {
     }
 }
 
-// Place a block in the world
-function placeBlock() {
-    if (selectedBlock) {
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
-        const material = new THREE.MeshBasicMaterial({ color: selectedBlock.color });
-        const block = new THREE.Mesh(geometry, material);
-        block.position.set(Math.floor(playerPosition.x), Math.floor(playerPosition.y), Math.floor(playerPosition.z));
-        world.add(block);
-        // Add the block to inventory if it's not already full
-        addToInventory(selectedBlock.name);
-    }
-}
-
 // Mouse move event
 function onMouseMove(event) {
     if (isMouseLocked) {
-        camera.rotation.y -= event.movementX * mouseSensitivity;
-        camera.rotation.x -= event.movementY * mouseSensitivity;
-        camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x)); // Limit vertical rotation
+        // Adjust camera rotation based on mouse movement
+        camera.rotation.y -= event.movementX * mouseSensitivity; // Horizontal movement
+        camera.rotation.x -= event.movementY * mouseSensitivity; // Vertical movement
+        
+        // Limit the vertical rotation
+        camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x));
     }
 }
 
@@ -175,7 +199,7 @@ function openInventory() {
     }
 }
 
-// Add block to inventory
+// Load and save inventory, and other related functions...
 function addToInventory(blockName) {
     const index = inventory.slots.indexOf(null);
     if (index !== -1) {
