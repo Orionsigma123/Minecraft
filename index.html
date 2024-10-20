@@ -3,21 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JavaScript Minecraft</title>
-    <style>
-        body { margin: 0; overflow: hidden; }
-        #menu { position: absolute; top: 20px; left: 20px; background: rgba(255, 255, 255, 0.8); padding: 10px; border-radius: 8px; }
-        #menu button { display: block; margin: 5px 0; }
-    </style>
+    <title>JavaScript Minecraft Clone</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="menu">
-        <button id="singleplayerBtn">Single Player</button>
-        <button id="multiplayerBtn">Multiplayer</button>
-        <button id="loadWorldBtn">Load World</button>
+        <h1>Minecraft Clone</h1>
+        <button id="singleplayer">Singleplayer</button>
+        <button id="multiplayer">Multiplayer</button>
     </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
-    <script src="script.js"></script>
+    <canvas id="gameCanvas"></canvas>
+    <script src="main.js"></script>
+    <script src="inventory.js"></script>
+    <script src="world.js"></script>
 </body>
 </html>
