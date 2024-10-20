@@ -172,6 +172,11 @@ document.getElementById('multiplayer').onclick = function() {
     alert('Multiplayer is not implemented yet!');
 };
 
+// Add functionality to the exit button
+document.getElementById('exit').onclick = function() {
+    alert('Exit button pressed!'); // Placeholder for exit functionality
+};
+
 // Initial setup
 generateTerrain();
 document.getElementById('gameCanvas').style.display = 'none';
