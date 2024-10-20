@@ -10,6 +10,7 @@ const movementSpeed = 0.1;
 let forward = 0, sideways = 0;
 let mouseSensitivity = 0.1;
 let isMouseLocked = false;
+const simplex = new SimplexNoise(); // Initialize Simplex Noise
 
 // Initialize the game
 function init() {
@@ -44,15 +45,15 @@ function startGame() {
     animate();
 }
 
-// Generate the world using Perlin noise
+// Generate the world using Simplex noise
 function generateWorld() {
     const size = 50; // Size of the world
-    const scale = 10; // Scale for the Perlin noise
+    const scale = 10; // Scale for the Simplex noise
     world = new THREE.Group();
 
     for (let x = -size; x < size; x++) {
         for (let z = -size; z < size; z++) {
-            const height = Math.floor(PerlinNoise.perlin2(x / scale, z / scale) * 10); // Get height based on Perlin noise
+            const height = Math.floor(simplex.noise2D(x / scale, z / scale) * 10); // Get height based on Simplex noise
             const material = getBlockMaterial(height);
             const block = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material);
             block.position.set(x, height / 2, z);
