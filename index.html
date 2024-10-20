@@ -3,18 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JavaScript Minecraft Clone</title>
+    <title>JavaScript Minecraft Edition</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://threejs.org/build/three.js"></script>
+    <script src="https://threejs.org/examples/js/perlin.js"></script>
 </head>
 <body>
     <div id="menu">
-        <h1>Minecraft Clone</h1>
-        <button id="singleplayer">Singleplayer</button>
+        <h1>JavaScript Minecraft Edition</h1>
+        <button id="singlePlayer">Single Player</button>
         <button id="multiplayer">Multiplayer</button>
     </div>
-    <canvas id="gameCanvas"></canvas>
-    <script src="main.js"></script>
-    <script src="inventory.js"></script>
-    <script src="world.js"></script>
+    <div id="gameArea">
+        <div id="inventory">
+            <h2>Inventory</h2>
+            <div id="inventorySlots"></div>
+        </div>
+    </div>
+    <script src="script.js"></script>
 </body>
 </html>
