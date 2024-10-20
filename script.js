@@ -13,12 +13,17 @@ document.body.appendChild(renderer.domElement);
 // World Generation
 const noise = new SimplexNoise();
 const worldSize = 100;
-const chunkSize = 16;
 const blocks = [];
+const chunkSize = 16;
+const player = { position: { x: 0, y: 5, z: 0 } }; // Player position
 
 function generateWorld() {
-    for (let x = 0; x < worldSize; x++) {
-        for (let z = 0; z < worldSize; z++) {
+    // Clear existing blocks
+    blocks.forEach(block => scene.remove(block));
+    blocks.length = 0; // Reset blocks array
+
+    for (let x = -worldSize / 2; x < worldSize / 2; x++) {
+        for (let z = -worldSize / 2; z < worldSize / 2; z++) {
             const height = Math.floor(noise.noise2D(x / 10, z / 10) * 10) + 5;
             for (let y = 0; y < height; y++) {
                 const geometry = new THREE.BoxGeometry(1, 1, 1);
@@ -30,9 +35,8 @@ function generateWorld() {
             }
         }
     }
+    camera.position.set(player.position.x, player.position.y, player.position.z + 10); // Set camera position
 }
-
-generateWorld();
 
 // Inventory System
 let selectedBlock = 0; // index of the selected block in the inventory
@@ -45,8 +49,9 @@ function addToInventory(block) {
 function placeBlock() {
     if (inventory[selectedBlock]) {
         const block = inventory[selectedBlock].clone();
-        block.position.set(Math.random() * 10, Math.random() * 10, Math.random() * 10);
+        block.position.set(Math.floor(player.position.x), Math.floor(player.position.y), Math.floor(player.position.z));
         scene.add(block);
+        blocks.push(block);
     }
 }
 
@@ -71,9 +76,14 @@ document.getElementById('singleplayer').addEventListener('click', () => {
     startSingleplayer();
 });
 
+document.getElementById('multiplayer').addEventListener('click', () => {
+    alert("Multiplayer feature is not implemented yet.");
+});
+
 function startSingleplayer() {
     // Hide menu and start game
     document.getElementById('menu').style.display = 'none';
+    generateWorld(); // Generate a new world
     animate();
 }
 
