@@ -42,3 +42,29 @@ button {
 button:hover {
     background: #b8b8b8; /* Darker on hover */
 }
+
+/* World Selection Overlay */
+.overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9); /* Dark background */
+    display: none; /* Hide initially */
+    text-align: center;
+    color: white;
+    z-index: 200;
+    padding: 20px;
+}
+
+#worldList {
+    margin: 20px 0;
+}
+
+#worldList div {
+    background: #333;
+    margin: 10px 0;
+    padding: 10px;
+    border-radius: 5px;
+}
