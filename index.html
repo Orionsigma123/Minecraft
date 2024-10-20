@@ -6,35 +6,18 @@
     <title>JavaScript Minecraft</title>
     <style>
         body { margin: 0; overflow: hidden; }
-        canvas { display: block; }
-        #menu {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(255, 255, 255, 0.8);
-            padding: 10px;
-            border-radius: 8px;
-            display: flex;
-            flex-direction: column;
-        }
-        button { margin: 5px; }
+        #menu { position: absolute; top: 20px; left: 20px; background: rgba(255, 255, 255, 0.8); padding: 10px; border-radius: 8px; }
+        #menu button { display: block; margin: 5px 0; }
     </style>
 </head>
 <body>
     <div id="menu">
-        <button id="singleplayer">Singleplayer</button>
-        <button id="multiplayer">Multiplayer</button>
+        <button id="singleplayerBtn">Single Player</button>
+        <button id="multiplayerBtn">Multiplayer</button>
+        <button id="loadWorldBtn">Load World</button>
     </div>
-    <canvas id="gameCanvas"></canvas>
-    
-    <!-- Load Three.js -->
-    <script src="https://threejs.org/build/three.min.js"></script>
-    <script>
-        console.log('Three.js version:', THREE.REVISION);
-    </script>
-    <!-- Load Simplex Noise -->
-    <script src="https://unpkg.com/simplex-noise/simplex-noise.min.js"></script>
-    <!-- Load your script last -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
