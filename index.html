@@ -4,24 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JavaScript Minecraft</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/noisejs/0.1.0/perlin.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+        #menu {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+        }
+        button { margin: 5px; }
+    </style>
 </head>
 <body>
     <div id="menu">
-        <h1 id="title">Minecraft</h1>
         <button id="singleplayer">Singleplayer</button>
         <button id="multiplayer">Multiplayer</button>
-        <button id="exit">Exit</button>
-    </div>
-    <div id="worldSelection" class="hidden">
-        <h2>World Selection</h2>
-        <ul id="worldList"></ul>
-        <button id="createWorld">Create New World</button>
-        <button id="backToMenu">Back to Menu</button>
     </div>
     <canvas id="gameCanvas"></canvas>
+    <script src="https://threejs.org/build/three.min.js"></script>
+    <script src="https://unpkg.com/simplex-noise/simplex-noise.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
