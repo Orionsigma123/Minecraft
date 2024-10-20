@@ -30,6 +30,15 @@ function init() {
     loadInventory();
     generateWorld();
     updateInventoryDisplay();
+
+    // Lock the mouse for first-person control
+    document.body.requestPointerLock();
+    document.addEventListener('mousemove', onMouseMove);
+    
+    // Ensure isMouseLocked is set to true after mouse is locked
+    document.addEventListener('pointerlockchange', () => {
+        isMouseLocked = document.pointerLockElement === document.body;
+    });
 }
 
 // Start the game
@@ -37,10 +46,6 @@ function startGame() {
     document.getElementById('menu').style.display = 'none';
     document.getElementById('gameArea').style.display = 'block';
     camera.position.set(playerPosition.x, playerPosition.y + 1, playerPosition.z);
-    
-    // Lock the mouse for first-person control
-    document.body.requestPointerLock();
-    document.addEventListener('mousemove', onMouseMove);
     
     animate();
 }
