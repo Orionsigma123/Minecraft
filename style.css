@@ -1,0 +1,44 @@
+body {
+    margin: 0;
+    overflow: hidden;
+    background-color: #4a90e2; /* Sky color */
+    font-family: 'Minecraft', sans-serif;
+}
+
+#gameCanvas {
+    display: none; /* Hide the canvas initially */
+}
+
+#menu {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    background: rgba(0, 0, 0, 0.8); /* Semi-transparent background */
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    color: white;
+    z-index: 100;
+}
+
+#title {
+    font-size: 48px;
+    margin-bottom: 20px;
+}
+
+button {
+    margin: 10px;
+    padding: 15px 30px;
+    font-size: 20px;
+    background: #d1d1d1;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+button:hover {
+    background: #b8b8b8; /* Darker on hover */
+}
