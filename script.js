@@ -140,4 +140,69 @@ function animate() {
     requestAnimationFrame(animate);
     updatePlayerPosition();
     
-    camera.position.set(player.x
+    camera.position.set(player.x, player.y, player.z);
+    camera.lookAt(player.x, player.y, player.z);
+
+    renderer.render(scene, camera);
+}
+
+// Initialize game
+function startGame() {
+    document.getElementById('menu').classList.add('hidden');
+    document.getElementById('gameCanvas').style.display = 'block';
+    generateTerrain();
+    animate();
+}
+
+// Menu button functionality
+document.getElementById('singleplayer').onclick = function() {
+    document.getElementById('menu').classList.add('hidden');
+    document.getElementById('worldSelection').classList.remove('hidden');
+    populateWorldList();
+};
+
+document.getElementById('backToMenu').onclick = function() {
+    document.getElementById('worldSelection').classList.add('hidden');
+    document.getElementById('menu').classList.remove('hidden');
+};
+
+// Populate world list
+function populateWorldList() {
+    const worldList = document.getElementById('worldList');
+    worldList.innerHTML = ''; // Clear existing list
+    const worlds = JSON.parse(localStorage.getItem('worlds')) || [];
+    
+    worlds.forEach((world, index) => {
+        const li = document.createElement('li');
+        li.textContent = world.name;
+        li.onclick = () => loadWorld(world);
+        worldList.appendChild(li);
+    });
+}
+
+// Load existing world
+function loadWorld(world) {
+    alert(`Loading world: ${world.name}`); // Placeholder for loading functionality
+    startGame(); // Start the game for now
+}
+
+// Create a new world
+document.getElementById('createWorld').onclick = function() {
+    const newWorldName = prompt('Enter a name for your new world:');
+    if (newWorldName) {
+        const worlds = JSON.parse(localStorage.getItem('worlds')) || [];
+        worlds.push({ name: newWorldName });
+        localStorage.setItem('worlds', JSON.stringify(worlds));
+        populateWorldList();
+        alert(`New world "${newWorldName}" created!`);
+    }
+};
+
+// Exit button functionality
+document.getElementById('exit').onclick = function() {
+    alert('Exit button pressed!'); // Placeholder for exit functionality
+};
+
+// Initial setup
+generateTerrain();
+document.getElementById('gameCanvas').style.display = 'none';
