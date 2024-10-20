@@ -140,43 +140,4 @@ function animate() {
     requestAnimationFrame(animate);
     updatePlayerPosition();
     
-    camera.position.set(player.x, player.y, player.z);
-    camera.lookAt(player.x, player.y, player.z);
-
-    renderer.render(scene, camera);
-}
-
-// Event listeners for placing and breaking blocks
-window.addEventListener('mousedown', (event) => {
-    if (event.button === 0) { // Left click
-        breakBlock();
-    } else if (event.button === 2) { // Right click
-        placeBlock();
-    }
-});
-
-// Prevent the context menu on right click
-window.addEventListener('contextmenu', (event) => {
-    event.preventDefault();
-});
-
-// Menu event listeners
-document.getElementById('singleplayer').onclick = function() {
-    document.getElementById('menu').style.display = 'none';
-    document.getElementById('gameCanvas').style.display = 'block';
-    generateTerrain();
-    animate();
-};
-
-document.getElementById('multiplayer').onclick = function() {
-    alert('Multiplayer is not implemented yet!');
-};
-
-// Add functionality to the exit button
-document.getElementById('exit').onclick = function() {
-    alert('Exit button pressed!'); // Placeholder for exit functionality
-};
-
-// Initial setup
-generateTerrain();
-document.getElementById('gameCanvas').style.display = 'none';
+    camera.position.set(player.x
